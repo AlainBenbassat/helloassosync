@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<extension key="helloassosync" type="module">
+  <file>helloassosync</file>
+  <name>HelloAsso Sync</name>
+  <description>FIXME</description>
+  <license>AGPL-3.0</license>
+  <authors>
+    <author>
+      <name>Alain Benbassat</name>
+      <email>alain@businessandcode.eu</email>
+      <role>Maintainer</role>
+    </author>
+  </authors>
+  <urls>
+    <url desc="Main Extension Page">https://FIXME</url>
+    <url desc="Licensing">https://www.gnu.org/licenses/agpl-3.0.html</url>
+  </urls>
+  <releaseDate>2025-08-15</releaseDate>
+  <version>1.0.0</version>
+  <develStage>stable</develStage>
+  <compatibility>
+    <ver>6.5</ver>
+  </compatibility>
+  <comments></comments>
+  <classloader>
+    <psr0 prefix="CRM_" path="."/>
+    <psr4 prefix="Civi\" path="Civi"/>
+  </classloader>
+  <civix>
+    <namespace>CRM/Helloassosync</namespace>
+    <format>25.01.1</format>
+    <angularModule>crmHelloassosync</angularModule>
+  </civix>
+  <mixins>
+    <mixin>mgd-php@1.0.0</mixin>
+    <mixin>setting-php@1.0.0</mixin>
+    <mixin>smarty@1.0.3</mixin>
+    <mixin>menu-xml@1.0.0</mixin>
+  </mixins>
+</extension>
