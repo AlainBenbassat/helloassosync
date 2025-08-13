@@ -19,11 +19,18 @@ class CRM_Helloassosync_Form_Settings extends CRM_Core_Form {
     $this->addFormButtons();
 
     $this->assign('elementNames', $this->getRenderableElementNames());
+    $this->assign('testLink', CRM_Utils_System::url('civicrm/helloassosync/test', 'reset=1'));
     parent::buildQuickForm();
   }
 
   public function postProcess(): void {
     $values = $this->exportValues();
+
+    $this->settings->setApiEndpoint($values['helloassosync_url']);
+    $this->settings->setClientId($values['helloassosync_client_id']);
+    $this->settings->setClientSecret($values['helloassosync_client_secret']);
+
+    CRM_Core_Session::setStatus('Paramètres sauvegardés', E::ts('Settings'), 'success');
 
     parent::postProcess();
   }
@@ -41,6 +48,9 @@ class CRM_Helloassosync_Form_Settings extends CRM_Core_Form {
         'name' => E::ts('Save'),
         'isDefault' => TRUE,
       ],
+      [
+        'name' => 'Tester',
+      ]
     ]);
   }
 
