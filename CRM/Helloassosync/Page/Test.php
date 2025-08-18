@@ -11,7 +11,8 @@ class CRM_Helloassosync_Page_Test extends CRM_Core_Page {
 
     $msg = 'HelloAsso Test';
 
-    $msg = $this->testHelloAssoSyncGetForms();
+    //$msg = $this->testHelloAssoSyncGetForms();
+    $msg = $this->testHelloAssoSync2();
 
     $this->assign('msg', $msg);
 
@@ -65,25 +66,24 @@ class CRM_Helloassosync_Page_Test extends CRM_Core_Page {
       $sortOrder = 'Desc';
 
       $organizationSlug = 'aspas-association-pour-la-protection-des-animaux-sauvages';
-      $result = $paymentsApi->organizationsOrganizationSlugPaymentsGet(
+      $result = $paymentsApi->organizationsOrganizationSlugFormsFormTypeFormSlugPaymentsGet(
         $organizationSlug,
-        null,//'2024-05-01T00:00:00Z', // from
-        null, //'2025-08-31T23:59:59Z', // to
-        null, // userSearchKey
-        1,    // pageIndex
-        5,    // pageSize (latest 5 payments)
+        '3',
+        \OpenAPI\Client\Model\HelloAssoApiV5ModelsEnumsFormType::DONATION,
+        '2025-08-13T00:00:00Z', // userSearchKey
+        '2025-08-31T23:59:59Z',    // pageIndex
+        null,    // pageSize (latest 5 payments)
         null, // continuationToken
         null, // states
         null, // sortOrder (defaults to Desc)
         null, // sortField (defaults to Date)
-        null // withCount
+        'Desc' // withCount
       );
 
 
       // 5) Build a readable message from the returned collection
       // Most HelloAsso list endpoints return an object with 'data' (array) and paging info.
       $lines = [];
-      $lines[] = 'Latest 5 payments:';
 
       $payments = [];
       if (is_array($result)) {
@@ -104,8 +104,10 @@ class CRM_Helloassosync_Page_Test extends CRM_Core_Page {
         $amountCents = method_exists($p, 'getAmount') ? $p->getAmount() : ($p->amount ?? 0);
         $status = method_exists($p, 'getStatus') ? $p->getStatus() : ($p->status ?? null);
         $date = method_exists($p, 'getDate') ? $p->getDate() : ($p->date ?? null);
-        $payerFirst = method_exists($p, 'getPayerFirstName') ? $p->getPayerFirstName() : ($p->payer_first_name ?? '');
-        $payerLast = method_exists($p, 'getPayerLastName') ? $p->getPayerLastName() : ($p->payer_last_name ?? '');
+
+        $payer = $p->getPayer();
+        $payerFirst = $payer->getFirstName();
+        $payerLast = $payer->getLastName();
 
         $amount = number_format(((int)$amountCents) / 100, 2, '.', ' ');
         $dateStr = $date instanceof \DateTime ? $date->format('Y-m-d H:i:s') : (is_string($date) ? $date : '');
@@ -124,7 +126,7 @@ class CRM_Helloassosync_Page_Test extends CRM_Core_Page {
         $lines[] = '(no payments found)';
       }
 
-      $msg = implode("\n", $lines);
+      $msg = implode("<br><br>", $lines);
     } catch (\Throwable $e) {
       $msg = 'Error while fetching payments: ' . $e->getMessage();
     }
@@ -163,6 +165,7 @@ class CRM_Helloassosync_Page_Test extends CRM_Core_Page {
       $organizationSlug = 'aspas-association-pour-la-protection-des-animaux-sauvages';
       $result = $formsApi->organizationsOrganizationSlugFormsGet(
         $organizationSlug,
+        'Public',
         null,
       );
 
@@ -186,15 +189,17 @@ class CRM_Helloassosync_Page_Test extends CRM_Core_Page {
       foreach ($forms as $p) {
         $slug = $p->getFormSlug();
         $url = $p->getUrl();
+        $t = $p->getFormType();
 
-        $lines[] = $slug . ', ' . $url;
+
+        $lines[] = '<li>' . $slug . ', ' . $t . '</li>';
       }
 
       if (count($forms) === 0) {
-        $lines[] = '(no payments found)';
+        $lines[] = '<li>(no payments found)</li>';
       }
 
-      $msg = implode("<br>", $lines);
+      $msg = '<ul>' . implode("<br>", $lines) . '</ul>';
     } catch (\Throwable $e) {
       $msg = 'Error while fetching payments: ' . $e->getMessage();
     }
