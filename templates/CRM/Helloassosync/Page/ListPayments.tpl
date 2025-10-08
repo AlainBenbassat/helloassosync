@@ -1,0 +1,32 @@
+<table>
+  <tr>
+    <th>ID</th>
+    <th>Date</th>
+    <th>Montant</th>
+    <th>État</th>
+    <th>Prénom</th>
+    <th>Nom</th>
+    <th>E-mail</th>
+    <th>Adresse</th>
+    <th>Ville</th>
+    <th>Code postal</th>
+    <th>Pays</th>
+    <th>Organisation</th>
+  </tr>
+  {foreach from=$paymentList item=payment}
+    <tr>
+      <td>{$payment.id}</td>
+      <td>{$payment.date}</td>
+      <td>{$payment.amount}</td>
+      <td>{$payment.status}</td>
+      <td>{$payment.first_name}</td>
+      <td>{$payment.last_name}</td>
+      <td>{$payment.email}</td>
+      <td>{$payment.address}</td>
+      <td>{$payment.city}</td>
+      <td>{$payment.postal_code}</td>
+      <td>{$payment.country}</td>
+      <td>{$payment.company}</td>
+    </tr>
+  {/foreach}
+</table>

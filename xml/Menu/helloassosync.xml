@@ -12,4 +12,16 @@
     <title>Test</title>
     <access_arguments>access CiviCRM</access_arguments>
   </item>
+  <item>
+    <path>civicrm/helloassosync/list-forms</path>
+    <page_callback>CRM_Helloassosync_Page_ListForms</page_callback>
+    <title>ListForms</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
+  <item>
+    <path>civicrm/helloassosync/list-payments</path>
+    <page_callback>CRM_Helloassosync_Page_ListPayments</page_callback>
+    <title>ListPayments</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
 </menu>

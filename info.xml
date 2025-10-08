@@ -2,7 +2,7 @@
 <extension key="helloassosync" type="module">
   <file>helloassosync</file>
   <name>HelloAsso Sync</name>
-  <description>FIXME</description>
+  <description>Synchroation HelloAsso</description>
   <license>AGPL-3.0</license>
   <authors>
     <author>

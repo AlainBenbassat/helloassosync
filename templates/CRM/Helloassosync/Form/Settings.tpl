@@ -12,5 +12,5 @@
 </div>
 
 <p>
-  <a href="{$testLink}">Tester la connexion</a>
+  <a href="{$testLink}">Tester la connexion</a> | <a href="{$formListLink}">Liste de formulaires</a> | <a href="{$paymentListLink}">Liste de paiements</a>
 </p>
