@@ -30,3 +30,5 @@
     </tr>
   {/foreach}
 </table>
+
+<p>{count($paymentList)} record(s)</p>

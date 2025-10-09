@@ -66,23 +66,23 @@ class CRM_Helloassosync_BAO_HelloAsso {
     return $formList;
   }
 
-  public function getPayments() {
+  public function getPayments(string $formSlug, string $formType, string $dateFrom, string $dateTo, string $sortOrder, ?string &$continuationToken) {
     $paymentList = [];
 
     $paymentsApi = new \OpenAPI\Client\Api\PaiementsApi(new \GuzzleHttp\Client(), $this->config);
 
     $result = $paymentsApi->organizationsOrganizationSlugFormsFormTypeFormSlugPaymentsGet(
       $this->organizationSlug,
-      '3',
-      \OpenAPI\Client\Model\HelloAssoApiV5ModelsEnumsFormType::DONATION,
-      '2025-01-01T00:00:00Z',
-      '2025-09-09T23:59:59Z',
+      $formSlug,
+      $formType,
+      "{$dateFrom} 00:00:00",
+      "{$dateTo} 23:59:59",
       null,
       null,
       null,
+      $continuationToken,
       null,
-      null,
-      'Asc',
+      $sortOrder,
       'Date',
       true
     );
@@ -94,7 +94,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
     foreach ($arrayOfPayments as $p) {
       $payer = $p->getPayer();
 
-      $formList[] = [
+      $paymentList[] = [
         'id' => $p->getId(),
         'date' => $p->getDate()->format('Y-m-d H:i:s'),
         'amount' => $p->getAmount(),
@@ -110,6 +110,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       ];
     }
 
-    return $formList;
+    return $paymentList;
   }
+
 }
