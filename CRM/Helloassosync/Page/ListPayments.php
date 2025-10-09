@@ -18,8 +18,9 @@ class CRM_Helloassosync_Page_ListPayments extends CRM_Core_Page {
     $i = 0;
     while (!empty($continuationToken)) {
       $payments = array_merge($payments, $helloAsso->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken));
-      $i++;
-      if ($i > 9) {
+
+      // limit the number of records (it's just a test page after all)
+      if (++$i > 9) {
         break;
       }
     }

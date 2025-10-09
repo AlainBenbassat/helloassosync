@@ -113,4 +113,35 @@ class CRM_Helloassosync_BAO_HelloAsso {
     return $paymentList;
   }
 
+  public function syncPayments(string $formSlug, string $formType, string $dateFrom, string $dateTo): int {
+    $n = 0;
+
+    $continuationToken = null;
+    $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken);
+    $n = $this->processPayments($payments, $formType);
+
+    while (!empty($continuationToken)) {
+      $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken);
+      $n += $this->processPayments($payments, $formType);
+    }
+
+    return $n;
+  }
+
+  private function processPayments($payments, $formType) {
+    $n = 0;
+
+    foreach ($payments as $payment) {
+      $contact = new CRM_Helloassosync_BAO_Contact();
+      $contact->findOrCreate($payment['first_name'], $payment['last_name'], $payment['email']);
+      if ($formType == 'Membership') {
+
+      }
+
+
+    }
+
+    return $n;
+  }
+
 }
