@@ -117,13 +117,11 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $n = 0;
 
     $continuationToken = null;
-    $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken);
-    $n = $this->processPayments($payments, $formType);
-
-    while (!empty($continuationToken)) {
+    do {
       $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken);
       $n += $this->processPayments($payments, $formType);
     }
+    while (!empty($continuationToken));
 
     return $n;
   }
@@ -132,13 +130,19 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $n = 0;
 
     foreach ($payments as $payment) {
-      $contact = new CRM_Helloassosync_BAO_Contact();
-      $contact->findOrCreate($payment['first_name'], $payment['last_name'], $payment['email']);
+      $contact = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['first_name'], $payment['last_name'], $payment['email']);
+      RM_Helloassosync_BAO_Contact::createOrUpdateAddress($contact['id'], $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
+
+      $contribution = CRM_HelloAssosync_BAO_Contribution::create($contact['id'], $formType, $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
+      if ($contribution == null) {
+        continue; // ignore invalid payment types
+      }
+
       if ($formType == 'Membership') {
 
       }
 
-
+      $n++;
     }
 
     return $n;
