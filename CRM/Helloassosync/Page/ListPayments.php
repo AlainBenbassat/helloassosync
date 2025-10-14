@@ -6,10 +6,10 @@ class CRM_Helloassosync_Page_ListPayments extends CRM_Core_Page {
   public function run() {
     CRM_Utils_System::setTitle(E::ts('HelloAsso - List Payments'));
 
-    $formSlug = CRM_Utils_Request::retrieveValue('slug', 'String', '3');
-    $formType = CRM_Utils_Request::retrieveValue('type', 'String', 'Donation');
-    $dateFrom = CRM_Utils_Request::retrieveValue('dateFrom', 'String', date('Y-m-d'));
-    $dateTo = CRM_Utils_Request::retrieveValue('dateTo', 'String', date('Y-m-d'));
+    $formSlug = CRM_Utils_Request::retrieveValue('form_slug', 'String', '3');
+    $formType = CRM_Utils_Request::retrieveValue('form_type', 'String', 'Donation');
+    $dateFrom = CRM_Utils_Request::retrieveValue('date_from', 'String', date('Y-m-d'));
+    $dateTo = CRM_Utils_Request::retrieveValue('date_to', 'String', date('Y-m-d'));
 
     $helloAsso = new CRM_Helloassosync_BAO_HelloAsso();
 

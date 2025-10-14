@@ -10,7 +10,7 @@ class CRM_Helloassosync_BAO_Contact {
 
     if (empty($contact)) {
       self::createContact($firstName, $lastName, $email);
-      $contact = self::findContact($lastName, $firstName, $email);
+      $contact = self::findContact($firstName, $lastName, $email);
     }
 
     return $contact;
@@ -59,6 +59,45 @@ class CRM_Helloassosync_BAO_Contact {
       ->execute();
   }
 
+  private static function createAddress($contactId, $streetAddress, $city, $postalCode, $countryCode) {
+    \Civi\Api4\Address::create(FALSE)
+      ->addValue('contact_id', $contactId)
+      ->addValue('street_address', $streetAddress)
+      ->addValue('city', $city)
+      ->addValue('postal_code', $postalCode)
+      ->addValue('country_id', self::convertCountryCode($countryCode))
+      ->addValue('is_primary', TRUE)
+      ->execute();
+  }
+
+  private static function isDifferentAddress($address, $streetAddress, $city, $postalCode, $countryCode) {
+    return $address['street_address'] !== $streetAddress
+      || $address['city'] !== $city
+      || $address['postal_code'] !== $postalCode;
+  }
+
+  private static function updateAddress($addressId, $streetAddress, $city, $postalCode, $countryCode) {
+    \Civi\Api4\Address::update(FALSE)
+      ->addWhere('id', '=', $addressId)
+      ->addValue('street_address', $streetAddress)
+      ->addValue('city', $city)
+      ->addValue('postal_code', $postalCode)
+      ->addValue('country_id', self::convertCountryCode($countryCode))
+      ->execute();
+  }
+
+  private static function convertCountryCode($countryCode) {
+    if ($countryCode === 'FRA') {
+      return 1076;
+    }
+
+    // HelloAsso country codes are not documented, so best effort
+    $twoLetterCode = substr($countryCode, 0, 2);
+    $countryId = CRM_Core_DAO::singleValueQuery("select min(id) from civicrm_country where iso_code = '$twoLetterCode'");
+
+    // return the found ID or Afhanistan (1001)
+    return $countryId ?? 1001;
+  }
 
 }
 

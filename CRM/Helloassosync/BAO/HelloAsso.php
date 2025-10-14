@@ -97,7 +97,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       $paymentList[] = [
         'id' => $p->getId(),
         'date' => $p->getDate()->format('Y-m-d H:i:s'),
-        'amount' => $p->getAmount(),
+        'amount' => $p->getAmount() / 100,
         'status' => $p->getState(),
         'first_name' => $payer->getFirstName(),
         'last_name' => $payer->getLastName(),
@@ -121,7 +121,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken);
       $n += $this->processPayments($payments, $formType);
     }
-    while (!empty($continuationToken));
+    while (count($payments) > 0);
 
     return $n;
   }
@@ -130,14 +130,16 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $n = 0;
 
     foreach ($payments as $payment) {
+      echo "Processing " . $payment['first_name'] . " " . $payment['last_name'] . " " .  $payment['email'] . " " . $payment['amount'] . "\n";
+
       $contact = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['first_name'], $payment['last_name'], $payment['email']);
       CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($contact['id'], $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
 
       if ($formType == 'Membership') {
-        CRM_HelloAssosync_BAO_Order::createMembership($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
+        CRM_Helloassosync_BAO_Order::createMembership($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
       }
       else {
-        CRM_HelloAssosync_BAO_Order::createDonation($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
+        CRM_Helloassosync_BAO_Order::createDonation($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
       }
 
       $n++;

@@ -10,8 +10,8 @@ function _civicrm_api3_hello_asso_sync_Getpayments_spec(&$spec) {
 
 function civicrm_api3_hello_asso_sync_Getpayments($params) {
   try {
-    $dateFrom = civicrm_api3_hello_asso_sync_processDateParam($params['date_from']);
-    $dateTo = civicrm_api3_hello_asso_sync_processDateParam($params['date_to']);
+    $dateFrom = civicrm_api3_hello_asso_sync_processDateParam($params, 'date_from');
+    $dateTo = civicrm_api3_hello_asso_sync_processDateParam($params, 'date_to');
 
     $helloAsso = new CRM_Helloassosync_BAO_HelloAsso();
     $msg = $helloAsso->syncPayments($params['form_slug'], $params['form_type'], $dateFrom, $dateTo);
@@ -23,14 +23,14 @@ function civicrm_api3_hello_asso_sync_Getpayments($params) {
   }
 }
 
-function civicrm_api3_hello_asso_sync_processDateParam($dateParam) {
-  if (empty($dateParam)) {
+function civicrm_api3_hello_asso_sync_processDateParam($params, $fieldName) {
+  if (empty($params[$fieldName])) {
     return date('Y-m-d');
   }
 
-  if ($dateParam == 'yesterday') {
+  if ($params[$fieldName] == 'yesterday') {
     return date('Y-m-d', strtotime('-1 day'));
   }
 
-  return $dateParam;
+  return $params[$fieldName];
 }
