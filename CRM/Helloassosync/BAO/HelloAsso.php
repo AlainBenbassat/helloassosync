@@ -131,15 +131,13 @@ class CRM_Helloassosync_BAO_HelloAsso {
 
     foreach ($payments as $payment) {
       $contact = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['first_name'], $payment['last_name'], $payment['email']);
-      RM_Helloassosync_BAO_Contact::createOrUpdateAddress($contact['id'], $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
-
-      $contribution = CRM_HelloAssosync_BAO_Contribution::create($contact['id'], $formType, $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
-      if ($contribution == null) {
-        continue; // ignore invalid payment types
-      }
+      CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($contact['id'], $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
 
       if ($formType == 'Membership') {
-
+        CRM_HelloAssosync_BAO_Order::createMembership($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
+      }
+      else {
+        CRM_HelloAssosync_BAO_Order::createDonation($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
       }
 
       $n++;

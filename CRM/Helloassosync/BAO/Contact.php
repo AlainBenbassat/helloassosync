@@ -16,6 +16,22 @@ class CRM_Helloassosync_BAO_Contact {
     return $contact;
   }
 
+  public static function createOrUpdateAddress($contactId, $streetAddress, $city, $postalCode, $countryCode) {
+    $address = \Civi\Api4\Address::get(FALSE)
+      ->addSelect('*')
+      ->addWhere('contact_id', '=', $contactId)
+      ->addWhere('is_primary', '=', 1)
+      ->execute()
+      ->first();
+
+    if (empty($address)) {
+      self::createAddress($contactId, $streetAddress, $city, $postalCode, $countryCode);
+    }
+    elseif (self::isDifferentAddress($address, $streetAddress, $city, $postalCode, $countryCode)) {
+      self::updateAddress($address['id'], $streetAddress, $city, $postalCode, $countryCode);
+    }
+  }
+
   private static function findContact($firstName, $lastName, $email) {
     return \Civi\Api4\Contact::get(FALSE)
       ->addSelect('id', 'first_name', 'last_name', 'email.email')
