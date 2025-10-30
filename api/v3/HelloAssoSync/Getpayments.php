@@ -14,7 +14,7 @@ function civicrm_api3_hello_asso_sync_Getpayments($params) {
     $dateTo = civicrm_api3_hello_asso_sync_processDateParam($params, 'date_to');
 
     $helloAsso = new CRM_Helloassosync_BAO_HelloAsso();
-    $msg = $helloAsso->syncPayments($params['form_slug'], $params['form_type'], $dateFrom, $dateTo);
+    $msg = $helloAsso->syncFormPayments($params['form_slug'], $params['form_type'], $dateFrom, $dateTo);
 
     return civicrm_api3_create_success($msg, $params, 'HelloAssoSync', 'Getpayments');
   }

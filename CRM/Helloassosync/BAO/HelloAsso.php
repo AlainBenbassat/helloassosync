@@ -1,37 +1,11 @@
 <?php
 
 class CRM_Helloassosync_BAO_HelloAsso {
-  private $config;
-  private $organizationSlug;
-
-  public function __construct() {
-    require_once __DIR__ . '/../../../vendor/autoload.php';
-
-    // get the saved connection settings (see civicrm/helloassosync/settings)
-    $settings = new CRM_Helloassosync_BAO_Settings();
-    $this->organizationSlug = $settings->getOrganizationSlug();
-
-    // create an OAuth2 client
-    $provider = new \League\OAuth2\Client\Provider\GenericProvider([
-      'clientId'                => $settings->getClientId(),
-      'clientSecret'            => $settings->getClientSecret(),
-      'urlAccessToken'          => $settings->getApiEndpoint() . '/oauth2/token',
-      'urlAuthorize'            => '',
-      'urlResourceOwnerDetails' => '',
-    ]);
-
-    // get an access token
-    $accessToken = $provider->getAccessToken('client_credentials');
-
-    // configure the OpenAPI client
-    $this->config = \OpenAPI\Client\Configuration::getDefaultConfiguration()->setAccessToken($accessToken->getToken());
-    $this->config->setBooleanFormatForQueryString(\OpenAPI\Client\Configuration::BOOLEAN_FORMAT_STRING);
-  }
 
   public function getOrganizationInfo() {
-    $orgApi = new \OpenAPI\Client\Api\OrganisationApi(new \GuzzleHttp\Client(), $this->config);
+    $orgApi = new \OpenAPI\Client\Api\OrganisationApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
     $result = $orgApi->organizationsOrganizationSlugGet(
-      $this->organizationSlug
+      CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->organizationSlug
     );
 
     return [
@@ -41,13 +15,13 @@ class CRM_Helloassosync_BAO_HelloAsso {
     ];
   }
 
-  public function getForms() {
+  public function getFormList() {
     $formList = [];
 
-    $formsApi = new \OpenAPI\Client\Api\FormulairesApi(new \GuzzleHttp\Client(), $this->config);
+    $formsApi = new \OpenAPI\Client\Api\FormulairesApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
 
     $result = $formsApi->organizationsOrganizationSlugFormsGet(
-      $this->organizationSlug,
+      CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->organizationSlug,
       'Public',
       null,
     );
@@ -66,13 +40,26 @@ class CRM_Helloassosync_BAO_HelloAsso {
     return $formList;
   }
 
+  public function syncFormPayments(string $formSlug, string $formType, string $dateFrom, string $dateTo): int {
+    $totalProcessed = 0;
+    $continuationToken = null;
+
+    do {
+      $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken);
+      $totalProcessed += $this->processPayments($formSlug, $payments, $formType);
+    }
+    while (count($payments) > 0);
+
+    return $totalProcessed;
+  }
+
   public function getPayments(string $formSlug, string $formType, string $dateFrom, string $dateTo, string $sortOrder, ?string &$continuationToken) {
     $paymentList = [];
 
-    $paymentsApi = new \OpenAPI\Client\Api\PaiementsApi(new \GuzzleHttp\Client(), $this->config);
+    $paymentsApi = new \OpenAPI\Client\Api\PaiementsApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
 
     $result = $paymentsApi->organizationsOrganizationSlugFormsFormTypeFormSlugPaymentsGet(
-      $this->organizationSlug,
+      CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->organizationSlug,
       $formSlug,
       $formType,
       "{$dateFrom} 00:00:00",
@@ -92,60 +79,65 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $continuationToken = $pagination->getContinuationToken();
 
     foreach ($arrayOfPayments as $p) {
-      $payer = $p->getPayer();
-
-      $paymentList[] = [
-        'id' => $p->getId(),
-        'date' => $p->getDate()->format('Y-m-d H:i:s'),
-        'amount' => $p->getAmount() / 100,
-        'status' => $p->getState(),
-        'first_name' => $payer->getFirstName(),
-        'last_name' => $payer->getLastName(),
-        'email' => $payer->getEmail(),
-        'address' => $payer->getAddress(),
-        'city' => $payer->getCity(),
-        'postal_code' => $payer->getZipCode(),
-        'country' => $payer->getCountry(),
-        'company' => $payer->getCompany(),
-      ];
+      $paymentList[] = $this->transformPaymentToArray($p);
     }
 
     return $paymentList;
   }
 
-  public function syncPayments(string $formSlug, string $formType, string $dateFrom, string $dateTo): int {
-    $n = 0;
-
-    $continuationToken = null;
-    do {
-      $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken);
-      $n += $this->processPayments($payments, $formType);
-    }
-    while (count($payments) > 0);
-
-    return $n;
-  }
-
-  private function processPayments($payments, $formType) {
-    $n = 0;
+  private function processPayments($formSlug, $payments, $formType) {
+    $totalProcessed = 0;
 
     foreach ($payments as $payment) {
-      echo "Processing " . $payment['first_name'] . " " . $payment['last_name'] . " " .  $payment['email'] . " " . $payment['amount'] . "\n";
+      \Civi::log()->debug('Processing payment', [
+        'name' => $payment['first_name'] . ' ' . $payment['last_name'],
+        'email' => $payment['email'],
+        'amount' => $payment['amount']
+      ]);
 
       $contact = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['first_name'], $payment['last_name'], $payment['email']);
       CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($contact['id'], $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
 
       if ($formType == 'Membership') {
-        CRM_Helloassosync_BAO_Order::createMembership($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
+        CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
       }
       else {
-        CRM_Helloassosync_BAO_Order::createDonation($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
+        $donationFrequence = $this->extractFrequence($payment);
+        CRM_Helloassosync_BAO_Order::createDonation($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $donationFrequence);
       }
 
-      $n++;
+      $totalProcessed++;
     }
 
-    return $n;
+    return $totalProcessed;
+  }
+
+  private function extractFrequence($payment): int {
+    // Ponctuel = 1, Mensuel = 2
+    if (!empty($payment['type'])) {
+      return ($payment['type'] == 'MonthlyDonation') ? 2 : 1;
+    }
+
+    return 1;
+  }
+
+  private function transformPaymentToArray($p) {
+    $payer = $p->getPayer();
+    return [
+      'id' => $p->getId(),
+      'date' => $p->getDate()->format('Y-m-d H:i:s'),
+      'amount' => $p->getAmount() / 100,
+      'status' => $p->getState(),
+      'first_name' => $payer->getFirstName(),
+      'last_name' => $payer->getLastName(),
+      'email' => $payer->getEmail(),
+      'address' => $payer->getAddress(),
+      'city' => $payer->getCity(),
+      'postal_code' => $payer->getZipCode(),
+      'country' => $payer->getCountry(),
+      'company' => $payer->getCompany(),
+      'type' => $p->getItems()[0]->getType() ?? 0,
+    ];
   }
 
 }

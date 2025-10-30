@@ -28,5 +28,8 @@ function helloassosync_civicrm_install(): void {
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_enable
  */
 function helloassosync_civicrm_enable(): void {
+  CRM_Helloassosync_BAO_Navigation::createIfNotExists();
+
   _helloassosync_civix_civicrm_enable();
 }
+

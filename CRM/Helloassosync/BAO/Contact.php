@@ -52,11 +52,50 @@ class CRM_Helloassosync_BAO_Contact {
       ->execute()
       ->first();
 
+    self::storeContactInGroup($contact['id']);
+    self::createEmail($contact['id'], $email);
+  }
+
+  private static function createEmail($contactId, $email) {
     \Civi\Api4\Email::create(FALSE)
-      ->addValue('contact_id', $contact['id'])
+      ->addValue('contact_id', $contactId)
       ->addValue('email', $email)
       ->addValue('is_primary', TRUE)
       ->execute();
+  }
+
+  private static function storeContactInGroup($contactId) {
+    $groupId = self::getGroupOfTheWeek();
+    \Civi\Api4\GroupContact::create(FALSE)
+      ->addValue('contact_id', $contactId)
+      ->addValue('group_id', $groupId)
+      ->addValue('status', 'Added')
+      ->execute();
+  }
+
+  private static function getGroupOfTheWeek() {
+    $year = date('Y');
+    $weekNumber = date('W');
+    $name = "Synchro HelloAsso : nouveaux contacts $year-$weekNumber";
+
+    $group = \Civi\Api4\Group::get(FALSE)
+      ->addSelect('id')
+      ->addWhere('title', '=', $name)
+      ->execute()
+      ->first();
+    if (empty($group)) {
+      $group = \Civi\Api4\Group::create(FALSE)
+        ->addValue('title', $name)
+        ->addValue('is_active', 1)
+        ->execute()
+        ->first();
+      $groupId = $group['id'];
+    }
+    else {
+      $groupId = $group['id'];
+    }
+
+    return $groupId;
   }
 
   private static function createAddress($contactId, $streetAddress, $city, $postalCode, $countryCode) {
@@ -97,6 +136,15 @@ class CRM_Helloassosync_BAO_Contact {
 
     // return the found ID or Afhanistan (1001)
     return $countryId ?? 1001;
+  }
+
+  public static function getCurrentMembership($contactId) {
+    return \Civi\Api4\Membership::get(FALSE)
+      ->addWhere('contact_id', '=', $contactId)
+      ->addWhere('status_id', 'IN', [1, 2, 3]) // new, current, grace
+      ->addOrderBy('end_date', 'DESC')
+      ->execute()
+      ->first();
   }
 
 }
