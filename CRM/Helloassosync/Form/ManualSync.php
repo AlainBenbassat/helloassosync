@@ -23,9 +23,11 @@ class CRM_Helloassosync_Form_ManualSync extends CRM_Core_Form {
       $result = civicrm_api3('HelloAssoSync', 'getpayments', [
         'form_slug' => $values['form_slug'],
         'form_type' => $values['form_type'],
+        'date_from' => $values['payment_date'],
+        'date_to' => $values['payment_date'],
       ]);
 
-      CRM_Core_Session::setStatus($result, '','success');
+      CRM_Core_Session::setStatus(print_r($result['values'], TRUE), '','success');
     }
     catch (Exception $e) {
       CRM_Core_Session::setStatus($e->getMessage(), 'Erreur', 'error');
