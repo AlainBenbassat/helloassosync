@@ -175,7 +175,7 @@ class CRM_HelloAssosync_BAO_Order {
   }
 
   private static function convertPaymentIdToSource($paymentId) {
-    return "HA_$paymentId";
+    return "HelloAsso $paymentId";
   }
 
   private static function setDonationFrequence($orderId, $donationFrequence) {
