@@ -1,12 +1,21 @@
 # helloassosync
-(*FIXME: In one or two paragraphs, describe what the extension does and why one would download it. *)
 
-This is an [extension for CiviCRM](https://docs.civicrm.org/sysadmin/en/latest/customize/extensions/), licensed under [AGPL-3.0](LICENSE.txt).
+Synchronisation des formulaires HelloAsso
 
-## Getting Started
+## Configuration de la connexion HelloAsso
 
-(* FIXME: Where would a new user navigate to get started? What changes would they see? *)
+Administrer > HelloAsso Synchronisation > Paramètres API
 
-## Known Issues
+## Confiration de la synchronisation d'un formulaire
 
-(* FIXME *)
+1. Administrer > Paramètres système > Tâches programmées
+1. Add Scheduled Job
+   * Nom: p.ex. synchro du formulaire de don numéro (slug) 3
+   * Fréquence d'exécution: p.ex. Quotidien
+   * Entité de la requête API: HelloAssoSync
+   * Action de la requête API: getpayments
+   * Paramètres de la commande:
+     * form_slug=3 (ou autre slug du formulaire)
+     * form_type=Donation (ou Membership)
+     * date_from=yesterday (ou une date YYYY-MM-DD)
+     * date_to=yesterday (ou une date YYYY-MM-DD)

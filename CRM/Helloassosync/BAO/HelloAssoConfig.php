@@ -7,7 +7,7 @@ class CRM_Helloassosync_BAO_HelloAssoConfig {
   public $organizationSlug;
 
   public static function getInstance(): CRM_Helloassosync_BAO_HelloAssoConfig {
-    if (!self::$instance) {
+    if (empty(self::$instance)) {
       self::$instance = new CRM_Helloassosync_BAO_HelloAssoConfig();
     }
     return self::$instance;

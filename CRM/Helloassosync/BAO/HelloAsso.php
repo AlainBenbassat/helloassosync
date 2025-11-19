@@ -1,6 +1,9 @@
 <?php
 
 class CRM_Helloassosync_BAO_HelloAsso {
+  public function __construct() {
+    require_once __DIR__ . '/../../../vendor/autoload.php';
+  }
 
   public function getOrganizationInfo() {
     $orgApi = new \OpenAPI\Client\Api\OrganisationApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);

@@ -121,6 +121,7 @@ class CRM_HelloAssosync_BAO_Order {
 
     $order = self::createOrder($params);
     self::processPayment($order, $paymentStatus);
+    //self::correctStartDate($membership['id']);
   }
 
   private static function createOrder($params) {
