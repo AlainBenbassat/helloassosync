@@ -8,6 +8,7 @@ class CRM_Helloassosync_BAO_Navigation {
 
     $topMenu = self::createTopMenu();
     self::createSettingsMenu($topMenu['id']);
+    self::createManualSyncMenu($topMenu['id']);
   }
 
   private static function exists() {
@@ -38,6 +39,19 @@ class CRM_Helloassosync_BAO_Navigation {
       ->addValue('label', 'Paramètres API')
       ->addValue('name', 'helloassosync_settings')
       ->addValue('url', 'civicrm/helloassosync/settings')
+      ->addValue('permission', ['administer CiviCRM'])
+      ->addValue('parent_id', $parentId)
+      ->addValue('is_active', 1)
+      ->execute()
+      ->first();
+  }
+
+  private static function createManualSyncMenu(int $parentId) {
+    return \Civi\Api4\Navigation::create(FALSE)
+      ->addValue('domain_id', 1)
+      ->addValue('label', 'Synchronisation manuelle')
+      ->addValue('name', 'helloassosync_manual_sync')
+      ->addValue('url', 'civicrm/helloassosync/manual-sync')
       ->addValue('permission', ['administer CiviCRM'])
       ->addValue('parent_id', $parentId)
       ->addValue('is_active', 1)

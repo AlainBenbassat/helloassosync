@@ -24,4 +24,10 @@
     <title>ListPayments</title>
     <access_arguments>access CiviCRM</access_arguments>
   </item>
+  <item>
+    <path>civicrm/helloassosync/manual-sync</path>
+    <page_callback>CRM_Helloassosync_Form_ManualSync</page_callback>
+    <title>ManualSync</title>
+    <access_arguments>access CiviCRM</access_arguments>
+  </item>
 </menu>
