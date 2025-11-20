@@ -1,19 +1,86 @@
 <?php
 
 class CRM_Helloassosync_BAO_Contact {
+  private const EMPLOYER_RELATIONSHIP_TYPE_ID = 5;
 
-  public static function findOrCreate($firstName, $lastName, $email) {
-    $contact = self::findContact($firstName, $lastName, $email);
+  public static function findOrCreate($company, $firstName, $lastName, $email): array {
+    $orgId = null;
+    $personId = null;
+
+    $person = self::findOrCreateIndividual($firstName, $lastName, $email);
+    $personId = $person['id'];
+
+    if (!empty($company)) {
+      $org = self::findOrCreateOrganization($company);
+      $orgId = $org['id'];
+      self::linkPersonToOrg($person['id'], $org['id']);
+    }
+
+    return [$orgId, $personId];
+  }
+
+  private static function findOrCreateOrganization($company) {
+    $org = self::findOrganization($company);
+    if (empty($org)) {
+      self::createOrganization($company);
+      $org = self::findOrganization($company);
+    }
+
+    return $org;
+  }
+
+  private static function findOrCreateIndividual($firstName, $lastName, $email) {
+    $contact = self::findIndividual($firstName, $lastName, $email);
     if (empty($contact)) {
-      $contact = self::findContact($lastName, $firstName, $email);
+      $contact = self::findIndividual($lastName, $firstName, $email);
     }
 
     if (empty($contact)) {
-      self::createContact($firstName, $lastName, $email);
-      $contact = self::findContact($firstName, $lastName, $email);
+      self::createIndividual($firstName, $lastName, $email);
+      $contact = self::findIndividual($firstName, $lastName, $email);
     }
 
     return $contact;
+  }
+
+  private static function linkPersonToOrg($personId, $orgId) {
+    // conservative approach: only link person to org. if the person has no employer/employee relationship
+    $employerId = CRM_Core_DAO::singleValueQuery("select employer_id from civicrm_contact where id = $personId");
+    if ($employerId) {
+      return;
+    }
+
+    // check if the relationship between the person and the org already exists
+    $relId = CRM_Core_DAO::singleValueQuery("
+      select
+        id
+      from
+        civicrm_relationship
+      where
+        relationship_type_id = " . self::EMPLOYER_RELATIONSHIP_TYPE_ID . "
+      and
+        contact_id_a = $personId
+      and
+        contact_id_b = $orgId
+      and
+        is_active = 1
+    ");
+    if ($relId) {
+      return;
+    }
+
+    // OK, create the relationship
+    \Civi\Api4\Relationship::create(FALSE)
+      ->addValue('contact_id_a', $personId)
+      ->addValue('contact_id_b', $orgId)
+      ->addValue('relationship_type_id', self::EMPLOYER_RELATIONSHIP_TYPE_ID)
+      ->addValue('is_active', TRUE)
+      ->execute();
+
+    \Civi\Api4\Contact::update(FALSE)
+      ->addValue('employer_id', $orgId)
+      ->addWhere('id', '=', $personId)
+      ->execute();
   }
 
   public static function createOrUpdateAddress($contactId, $streetAddress, $city, $postalCode, $countryCode) {
@@ -32,7 +99,7 @@ class CRM_Helloassosync_BAO_Contact {
     }
   }
 
-  private static function findContact($firstName, $lastName, $email) {
+  private static function findIndividual($firstName, $lastName, $email) {
     return \Civi\Api4\Contact::get(FALSE)
       ->addSelect('id', 'first_name', 'last_name', 'email.email')
       ->addWhere('first_name', '=', $firstName)
@@ -44,7 +111,7 @@ class CRM_Helloassosync_BAO_Contact {
       ->first();
   }
 
-  private static function createContact($firstName, $lastName, $email) {
+  private static function createIndividual($firstName, $lastName, $email) {
     $contact = \Civi\Api4\Contact::create(FALSE)
       ->addValue('contact_type', 'Individual')
       ->addValue('first_name', $firstName)
@@ -54,6 +121,26 @@ class CRM_Helloassosync_BAO_Contact {
 
     self::storeContactInGroup($contact['id']);
     self::createEmail($contact['id'], $email);
+  }
+
+  private static function findOrganization($company) {
+    return \Civi\Api4\Contact::get(FALSE)
+      ->addSelect('id', 'organization_name')
+      ->addWhere('contact_type', '=', 'Organization')
+      ->addWhere('organization_name', '=', $company)
+      ->addWhere('is_deleted', '=', 0)
+      ->execute()
+      ->first();
+  }
+
+  private static function createOrganization($company) {
+    $contact = \Civi\Api4\Contact::create(FALSE)
+      ->addValue('contact_type', 'Organization')
+      ->addValue('organization_name', $company)
+      ->execute()
+      ->first();
+
+    self::storeContactInGroup($contact['id']);
   }
 
   private static function createEmail($contactId, $email) {

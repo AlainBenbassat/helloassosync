@@ -4,6 +4,7 @@ use CRM_Helloassosync_ExtensionUtil as E;
 function _civicrm_api3_hello_asso_sync_Getpayments_spec(&$spec) {
   $spec['form_slug']['api.required'] = 1;
   $spec['form_type']['api.required'] = 1;
+  $spec['campaign_id']['api.required'] = 0;
   $spec['date_from']['api.required'] = 0;
   $spec['date_to']['api.required'] = 0;
 }
@@ -12,9 +13,10 @@ function civicrm_api3_hello_asso_sync_Getpayments($params) {
   try {
     $dateFrom = civicrm_api3_hello_asso_sync_processDateParam($params, 'date_from');
     $dateTo = civicrm_api3_hello_asso_sync_processDateParam($params, 'date_to');
+    $campaignId = $params['campaign_id'] ?? NULL;
 
     $helloAsso = new CRM_Helloassosync_BAO_HelloAsso();
-    $msg = $helloAsso->syncFormPayments($params['form_slug'], $params['form_type'], $dateFrom, $dateTo);
+    $msg = $helloAsso->syncFormPayments($params['form_slug'], $params['form_type'], $campaignId, $dateFrom, $dateTo);
 
     return civicrm_api3_create_success($msg, $params, 'HelloAssoSync', 'Getpayments');
   }

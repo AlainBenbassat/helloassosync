@@ -25,6 +25,7 @@ class CRM_Helloassosync_Form_ManualSync extends CRM_Core_Form {
         'form_type' => $values['form_type'],
         'date_from' => $values['payment_date'],
         'date_to' => $values['payment_date'],
+        'campaign_id' => $values['campaign_id'] ?? NULL,
       ]);
 
       CRM_Core_Session::setStatus(print_r($result['values'], TRUE), '','success');
@@ -39,6 +40,7 @@ class CRM_Helloassosync_Form_ManualSync extends CRM_Core_Form {
   private function addFormFields(): void {
     $this->add('text', 'form_slug', 'Slug du formulaire', [], TRUE);
     $this->addRadio('form_type', 'Type du formulaire', ['Membership' => 'Cotisation', 'Donation' => 'Don']);
+    $this->add('text', 'campaign_id', 'Id de la campagne', [], FALSE);
     $this->add('datepicker', 'payment_date', 'Date', [], TRUE, ['time' => FALSE]);
   }
 

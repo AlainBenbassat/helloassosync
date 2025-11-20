@@ -43,13 +43,13 @@ class CRM_Helloassosync_BAO_HelloAsso {
     return $formList;
   }
 
-  public function syncFormPayments(string $formSlug, string $formType, string $dateFrom, string $dateTo): int {
+  public function syncFormPayments(string $formSlug, string $formType, ?int $campaignId, string $dateFrom, string $dateTo): int {
     $totalProcessed = 0;
     $continuationToken = null;
 
     do {
       $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken);
-      $totalProcessed += $this->processPayments($formSlug, $payments, $formType);
+      $totalProcessed += $this->processPayments($formSlug, $payments, $formType, $campaignId);
     }
     while (count($payments) > 0);
 
@@ -82,31 +82,35 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $continuationToken = $pagination->getContinuationToken();
 
     foreach ($arrayOfPayments as $p) {
-      $paymentList[] = $this->transformPaymentToArray($p);
+      // initially, we synced all. As of 20 November 2025 we sync only authorized payments
+      if ($p->getState() == 'Authorized') {
+        $paymentList[] = $this->transformPaymentToArray($p);
+      }
     }
 
     return $paymentList;
   }
 
-  private function processPayments($formSlug, $payments, $formType) {
+  private function processPayments($formSlug, $payments, $formType, $campaignId) {
     $totalProcessed = 0;
 
     foreach ($payments as $payment) {
       \Civi::log()->debug('Processing payment', [
         'name' => $payment['first_name'] . ' ' . $payment['last_name'],
+        'company' => $payment['company'],
         'email' => $payment['email'],
         'amount' => $payment['amount']
       ]);
 
-      $contact = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['first_name'], $payment['last_name'], $payment['email']);
-      CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($contact['id'], $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
+      [$orgId, $personId] = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['company'], $payment['first_name'], $payment['last_name'], $payment['email']);
+      CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($orgId ?? $personId, $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
 
       if ($formType == 'Membership') {
-        CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
+        CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
       }
       else {
         $donationFrequence = $this->extractFrequence($payment);
-        CRM_Helloassosync_BAO_Order::createDonation($contact['id'], $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $donationFrequence);
+        CRM_Helloassosync_BAO_Order::createDonation($orgId, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $donationFrequence, $campaignId);
       }
 
       $totalProcessed++;

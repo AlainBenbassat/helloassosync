@@ -4,6 +4,7 @@ class CRM_HelloAssosync_BAO_Order {
   private const CONTRIB_STATUS_PENDING = 2;
   private const CONTRIB_STATUS_PAID = 1;
   private const CONTRIB_STATUS_CANCELED = 3;
+  private const PAYED_WITH_CARD = 2;
   private const FIN_TYPE_DON = 12;
   private const FIN_TYPE_COTISATION = 13;
   private const MEMBERSHIP_TYPE_NOVEMBER_ONE_YEAR_ID = 4;
@@ -11,15 +12,19 @@ class CRM_HelloAssosync_BAO_Order {
   private const PRICE_FIELD_ID = 65; // Montant libre de cotisation (15 euros minimum)
   private const PRICE_FIELD_VALUE_ID = 118; // Montant libre de cotisation (15 euros minimum)
 
-  public static function createDonation($contactId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount, $donationFrequence) {
-    if (self::contributionExists($contactId, $paymentId)) {
+  public static function createDonation($orgId, $personId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount, $donationFrequence, $campaignId) {
+    $mainContactId = $orgId ?? $personId;
+
+    if (self::contributionExists($mainContactId, $paymentId)) {
       return;
     }
 
     $params = [
-      'contact_id' => $contactId,
+      'contact_id' => $mainContactId,
       'total_amount' => $paymentAmount,
       'financial_type_id' => self::FIN_TYPE_DON,
+      'payment_instrument_id' => self::PAYED_WITH_CARD,
+      'campaign_id' => $campaignId,
       'receive_date' => $paymentDate,
       'source' => self::convertPaymentIdToSource($paymentId),
       'line_items' => [
@@ -40,6 +45,11 @@ class CRM_HelloAssosync_BAO_Order {
     $order = self::createOrder($params);
     self::setDonationFrequence($order['id'], $donationFrequence);
     self::processPayment($order, $paymentStatus);
+
+    if ($mainContactId == $orgId) {
+      // the donation is linked to the organization, so we need to create a soft contribution for the person
+      self::createSoftContribution($order['id'], $personId, $paymentAmount);
+    }
   }
 
   public static function createOrUpdateMembership($formSlug, $contactId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount) {
@@ -61,6 +71,7 @@ class CRM_HelloAssosync_BAO_Order {
       'contact_id' => $contactId,
       'total_amount' => $paymentAmount,
       'financial_type_id' => self::FIN_TYPE_COTISATION,
+      'payment_instrument_id' => self::PAYED_WITH_CARD,
       'receive_date' => $paymentDate,
       'source' => self::convertPaymentIdToSource($paymentId),
       'line_items' => [
@@ -148,6 +159,14 @@ class CRM_HelloAssosync_BAO_Order {
         'contribution_status_id' => $contributionStatus,
       ]);
     }
+  }
+
+  private static function createSoftContribution($contributionId, $contactId, $paymentAmount) {
+    \Civi\Api4\ContributionSoft::create(FALSE)
+      ->addValue('contribution_id', $contributionId)
+      ->addValue('contact_id', $contactId)
+      ->addValue('amount', $paymentAmount)
+      ->execute();
   }
 
   private static function convertHelloAssoPaymentStatus($paymentStatus) {

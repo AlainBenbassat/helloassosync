@@ -19,3 +19,4 @@ Administrer > HelloAsso Synchronisation > Paramètres API
      * form_type=Donation (ou Membership)
      * date_from=yesterday (ou une date YYYY-MM-DD)
      * date_to=yesterday (ou une date YYYY-MM-DD)
+     * campaign_id=55 (identifiant de la campagne, voir CiviCampaign)
