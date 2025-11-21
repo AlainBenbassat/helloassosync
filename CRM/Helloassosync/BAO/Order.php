@@ -165,6 +165,7 @@ class CRM_HelloAssosync_BAO_Order {
     \Civi\Api4\ContributionSoft::create(FALSE)
       ->addValue('contribution_id', $contributionId)
       ->addValue('contact_id', $contactId)
+      ->addValue('soft_credit_type_id', 5) // Dons dans le cadre professionnel
       ->addValue('amount', $paymentAmount)
       ->execute();
   }

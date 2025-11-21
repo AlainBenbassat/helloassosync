@@ -5,7 +5,6 @@ class CRM_Helloassosync_BAO_Contact {
 
   public static function findOrCreate($company, $firstName, $lastName, $email): array {
     $orgId = null;
-    $personId = null;
 
     $person = self::findOrCreateIndividual($firstName, $lastName, $email);
     $personId = $person['id'];
@@ -44,9 +43,9 @@ class CRM_Helloassosync_BAO_Contact {
   }
 
   private static function linkPersonToOrg($personId, $orgId) {
-    // conservative approach: only link person to org. if the person has no employer/employee relationship
+    // check if the employer is already linked to the person
     $employerId = CRM_Core_DAO::singleValueQuery("select employer_id from civicrm_contact where id = $personId");
-    if ($employerId) {
+    if ($employerId && $employerId == $orgId) {
       return;
     }
 
@@ -77,10 +76,13 @@ class CRM_Helloassosync_BAO_Contact {
       ->addValue('is_active', TRUE)
       ->execute();
 
-    \Civi\Api4\Contact::update(FALSE)
-      ->addValue('employer_id', $orgId)
-      ->addWhere('id', '=', $personId)
-      ->execute();
+    // make this the default employer if the person did not have an employer
+    if (empty($employerId)) {
+      \Civi\Api4\Contact::update(FALSE)
+        ->addValue('employer_id', $orgId)
+        ->addWhere('id', '=', $personId)
+        ->execute();
+    }
   }
 
   public static function createOrUpdateAddress($contactId, $streetAddress, $city, $postalCode, $countryCode) {
