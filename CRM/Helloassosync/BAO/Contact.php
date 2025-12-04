@@ -6,7 +6,7 @@ class CRM_Helloassosync_BAO_Contact {
   public static function findOrCreate($company, $firstName, $lastName, $email): array {
     $orgId = null;
 
-    $person = self::findOrCreateIndividual($firstName, $lastName, $email);
+    [$person, $status] = self::findOrCreateIndividual($firstName, $lastName, $email);
     $personId = $person['id'];
 
     if (!empty($company)) {
@@ -15,7 +15,7 @@ class CRM_Helloassosync_BAO_Contact {
       self::linkPersonToOrg($person['id'], $org['id']);
     }
 
-    return [$orgId, $personId];
+    return [$orgId, $personId, $status];
   }
 
   private static function findOrCreateOrganization($company) {
@@ -29,6 +29,8 @@ class CRM_Helloassosync_BAO_Contact {
   }
 
   private static function findOrCreateIndividual($firstName, $lastName, $email) {
+    $status = 'existing contact';
+
     $contact = self::findIndividual($firstName, $lastName, $email);
     if (empty($contact)) {
       $contact = self::findIndividual($lastName, $firstName, $email);
@@ -36,10 +38,11 @@ class CRM_Helloassosync_BAO_Contact {
 
     if (empty($contact)) {
       self::createIndividual($firstName, $lastName, $email);
+      $status = 'new contact';
       $contact = self::findIndividual($firstName, $lastName, $email);
     }
 
-    return $contact;
+    return [$contact, $status];
   }
 
   private static function linkPersonToOrg($personId, $orgId) {

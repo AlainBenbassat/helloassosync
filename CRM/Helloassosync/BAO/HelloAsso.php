@@ -91,6 +91,27 @@ class CRM_Helloassosync_BAO_HelloAsso {
     return $paymentList;
   }
 
+  public function processMailingSubscriptions($orderId, $personId) {
+    // mailing preferences are stored in custom fields of the order
+    $orderApi = new \OpenAPI\Client\Api\CommandesApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
+    $order = $orderApi->ordersOrderIdGet($orderId);
+    $items = $order->getItems();
+    foreach ($items as $item) {
+      $customFields = $item->getCustomFields();
+      $itemName = $item->getName();
+      echo "Item name = $itemName\n";
+      foreach ($customFields as $customField) {
+        $id = $customField->getId();
+        $customFieldName = $customField->getName();
+        $customFieldAnswer = $customField->getAnswer();
+        echo "   $id. $customFieldName = $customFieldAnswer\n";
+
+      }
+    }
+    // todo
+    exit;
+  }
+
   private function processPayments($formSlug, $payments, $formType, $campaignId) {
     $totalProcessed = 0;
 
@@ -102,8 +123,11 @@ class CRM_Helloassosync_BAO_HelloAsso {
         'amount' => $payment['amount']
       ]);
 
-      [$orgId, $personId] = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['company'], $payment['first_name'], $payment['last_name'], $payment['email']);
+      [$orgId, $personId, $status] = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['company'], $payment['first_name'], $payment['last_name'], $payment['email']);
       CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($orgId ?? $personId, $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
+      if ($status !== 'new contact') {
+        $this->processMailingSubscriptions($payment['order_id'], $personId);
+      }
 
       if ($formType == 'Membership') {
         CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
@@ -144,6 +168,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       'country' => $payer->getCountry(),
       'company' => $payer->getCompany(),
       'type' => $p->getItems()[0]->getType() ?? 0,
+      'order_id' => $p->getOrder()->getId(),
     ];
   }
 
