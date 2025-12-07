@@ -1,6 +1,6 @@
 {
     "require": {
-        "helloasso/helloasso-php": "^1.0",
+        "helloasso/helloasso-php": "1.0.6",
         "league/oauth2-client": "^2.8"
     }
 }

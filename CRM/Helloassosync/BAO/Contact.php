@@ -18,6 +18,20 @@ class CRM_Helloassosync_BAO_Contact {
     return [$orgId, $personId, $status];
   }
 
+  public static function updateCommunicationPreferences($contactId, $question, $answer) {
+    $fieldName = self::mapQuestionToField($question);
+    $fieldValue = self::mapAnswerToValue($answer);
+
+    if ($fieldName === '' || $fieldValue === -1) {
+      return;
+    }
+
+    \Civi\Api4\Contact::update(FALSE)
+      ->addValue($fieldName, $fieldValue)
+      ->addWhere('id', '=', $contactId)
+      ->execute();
+  }
+
   private static function findOrCreateOrganization($company) {
     $org = self::findOrganization($company);
     if (empty($org)) {
@@ -237,6 +251,40 @@ class CRM_Helloassosync_BAO_Contact {
       ->addOrderBy('end_date', 'DESC')
       ->execute()
       ->first();
+  }
+
+  // TODO: use webhook here and a client specific extension?
+  private static function mapQuestionToField($question) {
+    if (empty($question)) {
+      return '';
+    }
+
+    if (strpos($question, 'magazine trimestriel Goupil') !== FALSE) {
+      return 'Abonnements.Goupil_papier_web_aucun_';
+    }
+
+    if (strpos($question, "communications de l'ASPAS") !== FALSE) {
+      return 'Abonnements.Abonnement_Newsletter';
+    }
+
+    if (strpos($question, "communications de la délégation ASPAS de ma région") !== FALSE) {
+      return 'Abonnements.Abonnement_lettre_d_information_locale';
+    }
+
+    return '';
+  }
+
+  // TODO: use webhook here and a client specific extension?
+  private static function mapAnswerToValue($answer) {
+    switch (strtolower($answer)) {
+      case 'oui': return TRUE;
+      case 'non': return FALSE;
+      case 'en version papier': return 1;
+      case 'en version électronique': return 2;
+      case 'je ne souhaite pas recevoir le goupil': return 3;
+    }
+
+    return -1;
   }
 
 }
