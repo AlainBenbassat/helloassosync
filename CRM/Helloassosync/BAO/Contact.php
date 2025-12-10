@@ -106,7 +106,7 @@ class CRM_Helloassosync_BAO_Contact {
     $address = \Civi\Api4\Address::get(FALSE)
       ->addSelect('*')
       ->addWhere('contact_id', '=', $contactId)
-      ->addWhere('is_primary', '=', 1)
+      ->addWhere('is_primary', '=', TRUE)
       ->execute()
       ->first();
 
@@ -125,7 +125,7 @@ class CRM_Helloassosync_BAO_Contact {
       ->addWhere('last_name', '=', $lastName)
       ->addJoin('Email AS email', 'INNER', ['id', '=', 'email.contact_id'])
       ->addWhere('email.email', '=', $email)
-      ->addWhere('is_deleted', '=', 0)
+      ->addWhere('is_deleted', '=', FALSE)
       ->execute()
       ->first();
   }
@@ -147,7 +147,7 @@ class CRM_Helloassosync_BAO_Contact {
       ->addSelect('id', 'organization_name')
       ->addWhere('contact_type', '=', 'Organization')
       ->addWhere('organization_name', '=', $company)
-      ->addWhere('is_deleted', '=', 0)
+      ->addWhere('is_deleted', '=', FALSE)
       ->execute()
       ->first();
   }
@@ -192,7 +192,7 @@ class CRM_Helloassosync_BAO_Contact {
     if (empty($group)) {
       $group = \Civi\Api4\Group::create(FALSE)
         ->addValue('title', $name)
-        ->addValue('is_active', 1)
+        ->addValue('is_active', TRUE)
         ->execute()
         ->first();
       $groupId = $group['id'];
