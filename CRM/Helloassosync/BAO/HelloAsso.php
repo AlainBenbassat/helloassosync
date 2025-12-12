@@ -50,10 +50,10 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $totalProcessed = 0;
     $continuationToken = null;
     $pageIndex = 1;
-    $pageSize = 1;
+    $hasMoreData = TRUE;
 
-    while ($pageIndex <= $pageSize) {
-      $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken, $pageIndex, $pageSize);
+    while ($hasMoreData) {
+      $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken, $pageIndex, $hasMoreData);
       $totalProcessed += $this->processPayments($formSlug, $payments, $formType, $campaignId);
       $pageIndex++;
     }
@@ -61,7 +61,8 @@ class CRM_Helloassosync_BAO_HelloAsso {
     return $totalProcessed;
   }
 
-  public function getPayments(string $formSlug, string $formType, string $dateFrom, string $dateTo, string $sortOrder, ?string &$continuationToken, int $pageIndex, int &$pageSize) {
+  public function getPayments(string $formSlug, string $formType, string $dateFrom, string $dateTo, string $sortOrder, ?string &$continuationToken, int $pageIndex, bool &$hasMoreData) {
+    $pageSize = 20;
     $paymentList = [];
 
     $paymentsApi = new \OpenAPI\Client\Api\PaiementsApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
@@ -73,18 +74,22 @@ class CRM_Helloassosync_BAO_HelloAsso {
       "{$dateTo}T23:59:59.999Z",
       null,
       $pageIndex,
-      null,
-      $continuationToken,
+      $pageSize,
+      null, // used to be $continuationToken, but is seems to be broken
       null,
       $sortOrder,
       'Date',
-      true
+      TRUE
     );
 
+    // continuation token is broken as of December 2025
     $continuationToken = $result->getPagination()->getContinuationToken();
-    $pageSize = $result->getPagination()->getPageSize();
 
     $arrayOfPayments = $result->getData();
+
+    // instead of continuation token, we assume there is more if the count equals the page size
+    $hasMoreData = (count($arrayOfPayments) == $pageSize);
+
     foreach ($arrayOfPayments as $p) {
       // initially, we synced all. As of 20 November 2025 we sync only authorized payments
       if ($p->getState() == 'Authorized') {
