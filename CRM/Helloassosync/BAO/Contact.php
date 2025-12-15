@@ -263,12 +263,16 @@ class CRM_Helloassosync_BAO_Contact {
       return 'Abonnements.Goupil_papier_web_aucun_';
     }
 
-    if (strpos($question, "communications de l'ASPAS") !== FALSE) {
-      return 'Abonnements.Abonnement_Newsletter';
+    if (strpos($question, "Je souhaite recevoir de l'ASPAS") !== FALSE) {
+      return 'Abonnements.Je_souhaite_recevoir_de_la_part_de_l_ASPAS_';
     }
 
-    if (strpos($question, "communications de la délégation ASPAS de ma région") !== FALSE) {
+    if (strpos($question, 'Je souhaite recevoir les informations locales') !== FALSE) {
       return 'Abonnements.Abonnement_lettre_d_information_locale';
+    }
+
+    if (strpos($question, 'Sélectionner le département à suivre') !== FALSE) {
+      return 'Abonnements.D_partements_suivis';
     }
 
     return '';
@@ -282,9 +286,48 @@ class CRM_Helloassosync_BAO_Contact {
       case 'en version papier': return 1;
       case 'en version électronique': return 2;
       case 'je ne souhaite pas recevoir le goupil': return 3;
+      case 'uniquement la newsletter mensuelle': return 2;
+      case 'aucune communication': return 3;
+    }
+
+    if (strpos(strtolower($answer), 'toutes les communications (') !== FALSE) {
+      return 1;
+    }
+
+    if (self::isFrenchDepartment($answer)) {
+      return trim($answer);
     }
 
     return -1;
+  }
+
+  private static function isFrenchDepartment($answer) {
+    $dep = trim($answer);
+
+    switch ($dep) {
+      case '01':
+      case '02':
+      case '03':
+      case '04':
+      case '05':
+      case '06':
+      case '07':
+      case '08':
+      case '09':
+      case '2A':
+      case '2B':
+        return TRUE;
+    }
+
+    if ($dep >= 10 && $dep <= 95) {
+      return TRUE;
+    }
+
+    if ($dep >= 971 && $dep <= 976) {
+      return TRUE;
+    }
+
+    return FALSE;
   }
 
 }
