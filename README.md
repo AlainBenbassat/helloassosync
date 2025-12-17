@@ -2,14 +2,14 @@
 
 Synchronisation des formulaires HelloAsso
 
-## Configuration de la connexion HelloAsso
+## 1. Configurer les paramètres de connexion à l'API HelloAsso
 
 Administrer > HelloAsso Synchronisation > Paramètres API
 
-## Confiration de la synchronisation d'un formulaire
+## 2. Configurer la synchronisation d'un formulaire
 
 1. Administrer > Paramètres système > Tâches programmées
-1. Add Scheduled Job
+1. Cliquer sur "Add Scheduled Job"
    * Nom: p.ex. synchro du formulaire de don numéro (slug) 3
    * Fréquence d'exécution: p.ex. Quotidien
    * Entité de la requête API: HelloAssoSync
