@@ -10,7 +10,7 @@ class CRM_Helloassosync_BAO_Contact {
     $personId = $person['id'];
 
     if (!empty($company)) {
-      $org = self::findOrCreateOrganization($company);
+      $org = self::findOrCreateOrganization($company, $email);
       $orgId = $org['id'];
       self::linkPersonToOrg($person['id'], $org['id']);
     }
@@ -32,10 +32,10 @@ class CRM_Helloassosync_BAO_Contact {
       ->execute();
   }
 
-  private static function findOrCreateOrganization($company) {
+  private static function findOrCreateOrganization($company, $email) {
     $org = self::findOrganization($company);
     if (empty($org)) {
-      self::createOrganization($company);
+      self::createOrganization($company, $email);
       $org = self::findOrganization($company);
     }
 
@@ -152,12 +152,14 @@ class CRM_Helloassosync_BAO_Contact {
       ->first();
   }
 
-  private static function createOrganization($company) {
+  private static function createOrganization($company, $email) {
     $contact = \Civi\Api4\Contact::create(FALSE)
       ->addValue('contact_type', 'Organization')
       ->addValue('organization_name', $company)
       ->execute()
       ->first();
+
+    self::createEmail($contact['id'], $email);
 
     self::storeContactInGroup($contact['id']);
   }

@@ -139,7 +139,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
         CRM_Helloassosync_BAO_Order::createDonation($orgId, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $donationFrequency, $campaignId);
       }
 
-      if ($status == 'new contact' || $donationFrequency == self::DONATION_FREQUENCY_ONETIME) {
+      if ($status == 'new contact' || $donationFrequency == self::DONATION_FREQUENCY_ONETIME || $payment['installment_number'] == 1) {
         $this->processMailingSubscriptions($payment['order_id'], $personId);
       }
 
@@ -175,6 +175,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       'company' => $payer->getCompany(),
       'type' => $p->getItems()[0]->getType() ?? 0,
       'order_id' => $p->getOrder()->getId(),
+      'installment_number' => $p->getInstallmentNumber(),
     ];
   }
 
