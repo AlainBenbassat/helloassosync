@@ -158,7 +158,7 @@ class CRM_Helloassosync_BAO_Contact {
       ->first();
 
     self::storeContactInGroup($contact['id']);
-    self::createEmail($contact['id'], $email, self::LOCATION_TYPE_ID_HOME);
+    self::createEmail($contact['id'], $email, self::LOCATION_TYPE_ID_MAIN);
   }
 
   private static function findOrganization($company) {
