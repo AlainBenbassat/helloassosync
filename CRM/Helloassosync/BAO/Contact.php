@@ -2,6 +2,10 @@
 
 class CRM_Helloassosync_BAO_Contact {
   private const EMPLOYER_RELATIONSHIP_TYPE_ID = 5;
+  private const LOCATION_TYPE_ID_HOME = 1;
+  private const LOCATION_TYPE_ID_WORK = 2;
+  private const LOCATION_TYPE_ID_MAIN = 3;
+  private const ACTIVITY_TYPE_ID_FIRST_RECURRING_DONATION = 242;
 
   public static function findOrCreate($company, $firstName, $lastName, $email): array {
     $orgId = null;
@@ -32,11 +36,26 @@ class CRM_Helloassosync_BAO_Contact {
       ->execute();
   }
 
+  public static function createActivityFirstRecurringDonation($contactId) {
+    $activity = \Civi\Api4\Activity::create(FALSE)
+      ->addValue('activity_type_id', self::ACTIVITY_TYPE_ID_FIRST_RECURRING_DONATION)
+      ->addValue('status_id', 2) // completed
+      ->addValue('subject', 'Premier don')
+      ->addValue('activity_date_time', date('Y-m-d H:i:s'))
+      ->addValue('source_contact_id', $contactId)
+      ->addValue('target_contact_id', $contactId)
+      ->execute();
+  }
+
   private static function findOrCreateOrganization($company, $email) {
     $org = self::findOrganization($company);
     if (empty($org)) {
-      self::createOrganization($company, $email);
+      self::createOrganization($company);
       $org = self::findOrganization($company);
+    }
+
+    if (!self::emailExists($org['id'], $email)) {
+      self::createEmail($org['id'], $email, self::LOCATION_TYPE_ID_WORK);
     }
 
     return $org;
@@ -139,7 +158,7 @@ class CRM_Helloassosync_BAO_Contact {
       ->first();
 
     self::storeContactInGroup($contact['id']);
-    self::createEmail($contact['id'], $email);
+    self::createEmail($contact['id'], $email, self::LOCATION_TYPE_ID_HOME);
   }
 
   private static function findOrganization($company) {
@@ -152,22 +171,37 @@ class CRM_Helloassosync_BAO_Contact {
       ->first();
   }
 
-  private static function createOrganization($company, $email) {
+  private static function createOrganization($company) {
     $contact = \Civi\Api4\Contact::create(FALSE)
       ->addValue('contact_type', 'Organization')
       ->addValue('organization_name', $company)
       ->execute()
       ->first();
 
-    self::createEmail($contact['id'], $email);
-
     self::storeContactInGroup($contact['id']);
   }
 
-  private static function createEmail($contactId, $email) {
+  private static function emailExists($contactId, $email) {
+    $email = \Civi\Api4\Email::get(FALSE)
+      ->addSelect('id')
+      ->addWhere('contact_id', '=', $contactId)
+      ->addWhere('email', '=', $email)
+      ->execute()
+      ->first();
+
+    if (empty($email)) {
+      return FALSE;
+    }
+    else {
+      return TRUE;
+    }
+  }
+
+  private static function createEmail($contactId, $email, $locationTypeId) {
     \Civi\Api4\Email::create(FALSE)
       ->addValue('contact_id', $contactId)
       ->addValue('email', $email)
+      ->addValue('location_type_id', $locationTypeId)
       ->addValue('is_primary', TRUE)
       ->execute();
   }
