@@ -36,12 +36,12 @@ class CRM_Helloassosync_BAO_Contact {
       ->execute();
   }
 
-  public static function createActivityFirstRecurringDonation($contactId) {
+  public static function createActivityFirstRecurringDonation($contactId, $date) {
     $activity = \Civi\Api4\Activity::create(FALSE)
       ->addValue('activity_type_id', self::ACTIVITY_TYPE_ID_FIRST_RECURRING_DONATION)
       ->addValue('status_id', 2) // completed
       ->addValue('subject', 'Premier don')
-      ->addValue('activity_date_time', date('Y-m-d H:i:s'))
+      ->addValue('activity_date_time', $date)
       ->addValue('source_contact_id', $contactId)
       ->addValue('target_contact_id', $contactId)
       ->execute();

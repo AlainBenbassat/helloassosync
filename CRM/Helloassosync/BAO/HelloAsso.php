@@ -136,7 +136,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       }
       else {
         $donationFrequency = $this->extractFrequence($payment);
-        CRM_Helloassosync_BAO_Order::createDonation($orgId, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $donationFrequency, $campaignId);
+        CRM_Helloassosync_BAO_Order::createDonation($orgId, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $donationFrequency, $campaignId);
       }
 
       // update mailing preferences for new contacts, one-time donations, or for the first monthly donation
@@ -146,7 +146,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
 
       // create an activity for the first monthly donation
       if ($donationFrequency == self::DONATION_FREQUENCY_MONTHLY && $payment['installment_number'] == 1) {
-        CRM_Helloassosync_BAO_Contact::createActivityFirstRecurringDonation($orgId ?? $personId);
+        CRM_Helloassosync_BAO_Contact::createActivityFirstRecurringDonation($orgId ?? $personId, $payment['date']);
       }
 
       $totalProcessed++;
@@ -182,6 +182,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       'type' => $p->getItems()[0]->getType() ?? 0,
       'order_id' => $p->getOrder()->getId(),
       'installment_number' => $p->getInstallmentNumber(),
+      'payment_means' => $p->getPaymentMeans(),
     ];
   }
 
