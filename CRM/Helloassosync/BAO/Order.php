@@ -52,7 +52,7 @@ class CRM_HelloAssosync_BAO_Order {
 
     $order = self::createOrder($params);
     self::setDonationFrequence($order['id'], $donationFrequence);
-    self::processPayment($order, $paymentStatus);
+    self::processPayment($order, $paymentDate, $paymentStatus);
 
     if ($mainContactId == $orgId) {
       // the donation is linked to the organization, so we need to create a soft contribution for the person
@@ -149,7 +149,7 @@ class CRM_HelloAssosync_BAO_Order {
     return reset($results['values']);
   }
 
-  private static function processPayment($order, $paymentStatus) {
+  private static function processPayment($order, $paymentDate, $paymentStatus) {
     $contributionStatus = self::convertHelloAssoPaymentStatus($paymentStatus);
     if ($contributionStatus == 0) {
       return; // unkown status
@@ -159,6 +159,8 @@ class CRM_HelloAssosync_BAO_Order {
       civicrm_api3('Payment', 'create', [
         'contribution_id' => $order['id'],
         'total_amount' => $order['total_amount'],
+        'trxn_date' => $paymentDate,
+        'is_send_contribution_notification' => 0,
       ]);
     }
     else {
