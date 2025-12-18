@@ -7,7 +7,6 @@ class CRM_HelloAssosync_BAO_Order {
   private const PAYED_WITH_CARD = 2;
   private const PAYED_WITH_SEPA = 11;
   private const FIN_TYPE_DON = 12;
-  private const FIN_TYPE_DON_PONCTUEL = 25;
   private const FIN_TYPE_COTISATION = 13;
   private const MEMBERSHIP_TYPE_NOVEMBER_ONE_YEAR_ID = 4;
   private const MEMBERSHIP_STATUS_PENDING = 5;
@@ -31,7 +30,7 @@ class CRM_HelloAssosync_BAO_Order {
     $params = [
       'contact_id' => $mainContactId,
       'total_amount' => $paymentAmount,
-      'financial_type_id' => ($donationFrequency == 1 ? self::FIN_TYPE_DON_PONCTUEL : self::FIN_TYPE_DON),
+      'financial_type_id' => self::FIN_TYPE_DON,
       'payment_instrument_id' => $paymentInstrumentId,
       'campaign_id' => $campaignId,
       'receive_date' => $paymentDate,
