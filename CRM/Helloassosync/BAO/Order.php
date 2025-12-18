@@ -7,13 +7,14 @@ class CRM_HelloAssosync_BAO_Order {
   private const PAYED_WITH_CARD = 2;
   private const PAYED_WITH_SEPA = 11;
   private const FIN_TYPE_DON = 12;
+  private const FIN_TYPE_DON_PONCTUEL = 25;
   private const FIN_TYPE_COTISATION = 13;
   private const MEMBERSHIP_TYPE_NOVEMBER_ONE_YEAR_ID = 4;
   private const MEMBERSHIP_STATUS_PENDING = 5;
   private const PRICE_FIELD_ID = 65; // Montant libre de cotisation (15 euros minimum)
   private const PRICE_FIELD_VALUE_ID = 118; // Montant libre de cotisation (15 euros minimum)
 
-  public static function createDonation($orgId, $personId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount, $paymentMethod, $donationFrequence, $campaignId) {
+  public static function createDonation($orgId, $personId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount, $paymentMethod, $donationFrequency, $campaignId) {
     $mainContactId = $orgId ?? $personId;
 
     if (self::contributionExists($mainContactId, $paymentId)) {
@@ -30,7 +31,7 @@ class CRM_HelloAssosync_BAO_Order {
     $params = [
       'contact_id' => $mainContactId,
       'total_amount' => $paymentAmount,
-      'financial_type_id' => self::FIN_TYPE_DON,
+      'financial_type_id' => ($donationFrequency == 1 ? self::FIN_TYPE_DON_PONCTUEL : self::FIN_TYPE_DON),
       'payment_instrument_id' => $paymentInstrumentId,
       'campaign_id' => $campaignId,
       'receive_date' => $paymentDate,
@@ -51,7 +52,7 @@ class CRM_HelloAssosync_BAO_Order {
     ];
 
     $order = self::createOrder($params);
-    self::setDonationFrequence($order['id'], $donationFrequence);
+    self::setDonationFrequence($order['id'], $donationFrequency);
     self::processPayment($order, $paymentDate, $paymentStatus);
 
     if ($mainContactId == $orgId) {
