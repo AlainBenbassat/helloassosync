@@ -65,13 +65,16 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $pageSize = 20;
     $paymentList = [];
 
+    // date to is exclusive according to the helloasso api so we add one day to make it inclusive
+    $dateTo = (new \DateTime($dateTo))->modify('+1 day')->format('Y-m-d');
+
     $paymentsApi = new \OpenAPI\Client\Api\PaiementsApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
     $result = $paymentsApi->organizationsOrganizationSlugFormsFormTypeFormSlugPaymentsGet(
       CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->organizationSlug,
       $formSlug,
       $formType,
       "{$dateFrom}T00:00:00.000Z",
-      "{$dateTo}T23:59:59.999Z",
+      "{$dateTo}T00:00:00.000Z",
       null,
       $pageIndex,
       $pageSize,

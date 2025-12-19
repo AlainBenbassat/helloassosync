@@ -142,6 +142,7 @@ class CRM_Helloassosync_BAO_Contact {
       ->addSelect('id', 'first_name', 'last_name', 'email.email')
       ->addWhere('first_name', '=', $firstName)
       ->addWhere('last_name', '=', $lastName)
+      ->addWhere('contact_type', '=', 'Individual')
       ->addJoin('Email AS email', 'INNER', ['id', '=', 'email.contact_id'])
       ->addWhere('email.email', '=', $email)
       ->addWhere('is_deleted', '=', FALSE)
