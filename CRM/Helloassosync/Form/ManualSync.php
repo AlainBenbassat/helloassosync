@@ -25,6 +25,7 @@ class CRM_Helloassosync_Form_ManualSync extends CRM_Core_Form {
         'form_type' => $values['form_type'],
         'date_from' => $values['payment_date'],
         'date_to' => $values['payment_date'],
+        'financial_type_id' => $values['financial_type_id'],
         'campaign_id' => $values['campaign_id'] ?? NULL,
       ]);
 
@@ -38,9 +39,12 @@ class CRM_Helloassosync_Form_ManualSync extends CRM_Core_Form {
   }
 
   private function addFormFields(): void {
+    $x = Civi::entity('FinancialType')->getOptions('label');
+
     $this->add('text', 'form_slug', 'Slug du formulaire', [], TRUE);
     $this->addRadio('form_type', 'Type du formulaire', ['Membership' => 'Cotisation', 'Donation' => 'Don']);
-    $this->add('text', 'campaign_id', 'Id de la campagne', [], FALSE);
+    $this->add('select', 'financial_type_id', 'Type de recette', $this->getFinancialTypes(), TRUE);
+    $this->add('select', 'campaign_id', 'Id de la campagne', $this->getCampaigns(), FALSE);
     $this->add('datepicker', 'payment_date', 'Date', [], TRUE, ['time' => FALSE]);
   }
 
@@ -70,6 +74,36 @@ class CRM_Helloassosync_Form_ManualSync extends CRM_Core_Form {
       }
     }
     return $elementNames;
+  }
+
+  private function getCampaigns(): array {
+    $financialTypes = \Civi\Api4\Campaign::get(FALSE)
+      ->addSelect('id', 'title')
+      ->addWhere('is_active', '=', TRUE)
+      ->addOrderBy('title', 'ASC')
+      ->execute();
+
+    $arr = [];
+    foreach ($financialTypes as $financialType) {
+      $arr[$financialType['id']] = $financialType['title'];
+    }
+
+    return $arr;
+  }
+
+  private function getFinancialTypes(): array {
+    $financialTypes = \Civi\Api4\FinancialType::get(FALSE)
+      ->addSelect('id', 'label')
+      ->addWhere('is_active', '=', TRUE)
+      ->addOrderBy('label', 'ASC')
+      ->execute();
+
+    $arr = [];
+    foreach ($financialTypes as $financialType) {
+      $arr[$financialType['id']] = $financialType['label'];
+    }
+
+    return $arr;
   }
 
 }

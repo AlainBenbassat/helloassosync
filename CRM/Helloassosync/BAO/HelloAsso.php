@@ -46,7 +46,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
     return $formList;
   }
 
-  public function syncFormPayments(string $formSlug, string $formType, ?int $campaignId, string $dateFrom, string $dateTo): int {
+  public function syncFormPayments(string $formSlug, string $formType, int $financialTypeId, ?int $campaignId, string $dateFrom, string $dateTo): int {
     $totalProcessed = 0;
     $continuationToken = null;
     $pageIndex = 1;
@@ -54,7 +54,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
 
     while ($hasMoreData) {
       $payments = $this->getPayments($formSlug, $formType, $dateFrom, $dateTo,'Asc', $continuationToken, $pageIndex, $hasMoreData);
-      $totalProcessed += $this->processPayments($formSlug, $payments, $formType, $campaignId);
+      $totalProcessed += $this->processPayments($formSlug, $payments, $formType, $financialTypeId, $campaignId);
       $pageIndex++;
     }
 
@@ -118,7 +118,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
     }
   }
 
-  private function processPayments($formSlug, $payments, $formType, $campaignId) {
+  private function processPayments($formSlug, $payments, $formType, $financialTypeId, $campaignId) {
     $totalProcessed = 0;
     $donationFrequency = self::DONATION_FREQUENCY_ONETIME;
 
@@ -139,7 +139,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       }
       else {
         $donationFrequency = $this->extractFrequence($payment);
-        CRM_Helloassosync_BAO_Order::createDonation($orgId, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $payment['installment_number'], $donationFrequency, $campaignId);
+        CRM_Helloassosync_BAO_Order::createDonation($orgId, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
       }
 
       // update mailing preferences for new contacts, one-time donations, or for the first monthly donation

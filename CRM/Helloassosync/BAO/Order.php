@@ -13,7 +13,7 @@ class CRM_HelloAssosync_BAO_Order {
   private const PRICE_FIELD_ID = 65; // Montant libre de cotisation (15 euros minimum)
   private const PRICE_FIELD_VALUE_ID = 118; // Montant libre de cotisation (15 euros minimum)
 
-  public static function createDonation($orgId, $personId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount, $paymentMethod, $installmentNumber, $donationFrequency, $campaignId) {
+  public static function createDonation($orgId, $personId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount, $paymentMethod, $installmentNumber, $donationFrequency, $financialTypeId, $campaignId) {
     $mainContactId = $orgId ?? $personId;
 
     if (self::contributionExists($mainContactId, $paymentId)) {
@@ -30,7 +30,7 @@ class CRM_HelloAssosync_BAO_Order {
     $params = [
       'contact_id' => $mainContactId,
       'total_amount' => $paymentAmount,
-      'financial_type_id' => self::FIN_TYPE_DON,
+      'financial_type_id' => $financialTypeId,
       'payment_instrument_id' => $paymentInstrumentId,
       'campaign_id' => $campaignId,
       'receive_date' => $paymentDate,
