@@ -281,11 +281,12 @@ class CRM_Helloassosync_BAO_Contact {
     return $countryId ?? 1001;
   }
 
-  public static function getCurrentMembership($contactId) {
+  public static function getCurrentMembership(int $contactId, int $year) {
+    $lastYear = $year - 1;
+
     return \Civi\Api4\Membership::get(FALSE)
       ->addWhere('contact_id', '=', $contactId)
-      ->addWhere('status_id', 'IN', [1, 2, 3]) // new, current, grace
-      ->addOrderBy('end_date', 'DESC')
+      ->addWhere('end_date', '>=', "$year-01-01")
       ->execute()
       ->first();
   }

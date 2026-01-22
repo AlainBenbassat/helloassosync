@@ -13,11 +13,11 @@ class CRM_HelloAssosync_BAO_Order {
   private const PRICE_FIELD_ID = 65; // Montant libre de cotisation (15 euros minimum)
   private const PRICE_FIELD_VALUE_ID = 118; // Montant libre de cotisation (15 euros minimum)
 
-  public static function createDonation($orgId, $personId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount, $paymentMethod, $installmentNumber, $donationFrequency, $financialTypeId, $campaignId) {
-    $mainContactId = $orgId ?? $personId;
-
-    if (self::contributionExists($mainContactId, $paymentId)) {
-      return;
+  public static function createDonation($mainContactId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount, $paymentMethod, $installmentNumber, $donationFrequency, $financialTypeId, $campaignId): int {
+    // check if the contribution already exists
+    $contributionId = self::contributionExists($mainContactId, $paymentId);
+    if ($contributionId > 0) {
+      return $contributionId;
     }
 
     if (strtolower($paymentMethod) == 'sepa') {
@@ -54,98 +54,41 @@ class CRM_HelloAssosync_BAO_Order {
     self::setDonationFrequence($order['id'], $donationFrequency);
     self::processPayment($order, $paymentDate, $paymentStatus);
 
-    if ($mainContactId == $orgId) {
-      // the donation is linked to the organization, so we need to create a soft contribution for the person
-      self::createSoftContribution($order['id'], $personId, $paymentAmount);
-    }
-
     // create an activity for the first monthly donation
     if ($donationFrequency != 1 && $installmentNumber == 1) {
-      CRM_Helloassosync_BAO_Contact::createActivityFirstRecurringDonation($orgId ?? $personId, $paymentDate);
+      CRM_Helloassosync_BAO_Contact::createActivityFirstRecurringDonation($mainContactId, $paymentDate);
     }
+
+    return $order['id'];
   }
 
-  public static function createOrUpdateMembership($formSlug, $contactId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount) {
-    if (self::contributionExists($contactId, $paymentId)) {
-      return;
-    }
+  public static function createOrUpdateMembership(string $formSlug, string $paymentDate, int $contactId) {
+    $year = substr($formSlug, -4);
 
-    $membership = CRM_Helloassosync_BAO_Contact::getCurrentMembership($contactId);
+    $membership = CRM_Helloassosync_BAO_Contact::getCurrentMembership($contactId, $year);
     if (empty($membership)) {
-      self::createMembership($formSlug, $contactId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount);
+      self::createMembership($contactId, $paymentDate, $year);
     }
     else {
-      self::updateMembership($membership, $formSlug, $contactId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount);
+      self::updateMembership($membership['id'], $year);
     }
   }
 
-  private static function createMembership($formSlug, $contactId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount) {
-    $params = [
-      'contact_id' => $contactId,
-      'total_amount' => $paymentAmount,
-      'financial_type_id' => self::FIN_TYPE_COTISATION,
-      'payment_instrument_id' => self::PAYED_WITH_CARD,
-      'receive_date' => $paymentDate,
-      'source' => self::convertPaymentIdToSource($paymentId),
-      'line_items' => [
-        [
-          'params' => [
-            'membership_type_id' => self::MEMBERSHIP_TYPE_NOVEMBER_ONE_YEAR_ID,
-            'contact_id' => $contactId,
-            'skipStatusCal' => 1,
-            'status_id' => self::MEMBERSHIP_STATUS_PENDING,
-          ],
-          'line_item' => [
-            [
-              'entity_table' => 'civicrm_membership',
-              'price_field_id' => self::PRICE_FIELD_ID,
-              'price_field_value_id' => self::PRICE_FIELD_VALUE_ID,
-              'qty' => 1,
-              'unit_price' => $paymentAmount,
-              'line_total' => $paymentAmount,
-            ],
-          ],
-        ],
-      ],
-    ];
-
-    $order = self::createOrder($params);
-    self::processPayment($order, $paymentStatus);
+  private static function createMembership(int $contactId, string $joinDate, int $year) {
+    \Civi\Api4\Membership::create(FALSE)
+      ->addValue('contact_id', $contactId)
+      ->addValue('join_date', $joinDate)
+      /*->addValue('start_date', "$year-01-01")
+      ->addValue('end_date', "$year-12-31")*/
+      ->addValue('membership_type_id', self::MEMBERSHIP_TYPE_NOVEMBER_ONE_YEAR_ID)
+      ->execute();
   }
 
-  private static function updateMembership($membership, $formSlug, $contactId, $paymentId, $paymentDate, $paymentStatus, $paymentAmount) {
-    $params = [
-      'contact_id' => $contactId,
-      'total_amount' => $paymentAmount,
-      'financial_type_id' => self::FIN_TYPE_COTISATION,
-      'receive_date' => $paymentDate,
-      'source' => self::convertPaymentIdToSource($paymentId),
-      'line_items' => [
-        [
-          'params' => [
-            'membership_type_id' => self::MEMBERSHIP_TYPE_NOVEMBER_ONE_YEAR_ID,
-            'id' => $membership['id'],
-            'contact_id' => $contactId,
-            'skipStatusCal' => 1,
-            'status_id' => self::MEMBERSHIP_STATUS_PENDING,
-          ],
-          'line_item' => [
-            [
-              'entity_table' => 'civicrm_membership',
-              'price_field_id' => self::PRICE_FIELD_ID,
-              'price_field_value_id' => self::PRICE_FIELD_VALUE_ID,
-              'qty' => 1,
-              'unit_price' => $paymentAmount,
-              'line_total' => $paymentAmount,
-            ],
-          ],
-        ],
-      ],
-    ];
-
-    $order = self::createOrder($params);
-    self::processPayment($order, $paymentStatus);
-    //self::correctStartDate($membership['id']);
+  private static function updateMembership($membership, int $year) {
+    \Civi\Api4\Membership::update(FALSE)
+      ->addValue('end_date', "$year-12-31")
+      ->addWhere('id', '=', $membership['id'])
+      ->execute();
   }
 
   private static function createOrder($params) {
@@ -176,11 +119,11 @@ class CRM_HelloAssosync_BAO_Order {
     }
   }
 
-  private static function createSoftContribution($contributionId, $contactId, $paymentAmount) {
+  public static function createSoftContribution($contributionId, $contactId, $paymentAmount, $softCreditType) {
     \Civi\Api4\ContributionSoft::create(FALSE)
       ->addValue('contribution_id', $contributionId)
       ->addValue('contact_id', $contactId)
-      ->addValue('soft_credit_type_id', 5) // Dons dans le cadre professionnel
+      ->addValue('soft_credit_type_id', $softCreditType)
       ->addValue('amount', $paymentAmount)
       ->execute();
   }
@@ -198,7 +141,7 @@ class CRM_HelloAssosync_BAO_Order {
     return 0;
   }
 
-  private static function contributionExists($contactId, $paymentId) {
+  public static function contributionExists($contactId, $paymentId): int {
     $contrib = \Civi\Api4\Contribution::get(FALSE)
       ->addSelect('id')
       ->addWhere('contact_id', '=', $contactId)
@@ -206,7 +149,7 @@ class CRM_HelloAssosync_BAO_Order {
       ->execute()
       ->first();
 
-    return $contrib ? TRUE : FALSE;
+    return $contrib ? $contrib['id'] : 0;
   }
 
   private static function convertPaymentIdToSource($paymentId) {

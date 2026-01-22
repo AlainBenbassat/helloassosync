@@ -4,8 +4,16 @@ class CRM_Helloassosync_BAO_HelloAsso {
   private const DONATION_FREQUENCY_ONETIME = 1;
   private const DONATION_FREQUENCY_MONTHLY = 2;
 
+  private $formsApi;
+  private $paymentsApi;
+  private $orderApi;
+
   public function __construct() {
     require_once __DIR__ . '/../../../vendor/autoload.php';
+
+    $this->formsApi = new \OpenAPI\Client\Api\FormulairesApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
+    $this->paymentsApi = new \OpenAPI\Client\Api\PaiementsApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
+    $this->orderApi = new \OpenAPI\Client\Api\CommandesApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
   }
 
   public function getOrganizationInfo() {
@@ -24,9 +32,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
   public function getFormList() {
     $formList = [];
 
-    $formsApi = new \OpenAPI\Client\Api\FormulairesApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
-
-    $result = $formsApi->organizationsOrganizationSlugFormsGet(
+    $result = $this->formsApi->organizationsOrganizationSlugFormsGet(
       CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->organizationSlug,
       'Public',
       null,
@@ -68,8 +74,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
     // date to is exclusive according to the helloasso api so we add one day to make it inclusive
     $dateTo = (new \DateTime($dateTo))->modify('+1 day')->format('Y-m-d');
 
-    $paymentsApi = new \OpenAPI\Client\Api\PaiementsApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
-    $result = $paymentsApi->organizationsOrganizationSlugFormsFormTypeFormSlugPaymentsGet(
+    $result = $this->paymentsApi->organizationsOrganizationSlugFormsFormTypeFormSlugPaymentsGet(
       CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->organizationSlug,
       $formSlug,
       $formType,
@@ -103,54 +108,193 @@ class CRM_Helloassosync_BAO_HelloAsso {
     return $paymentList;
   }
 
-  public function processMailingSubscriptions($orderId, $contactId) {
+  public function processMailingSubscriptions($item, $contactId) {
     // mailing preferences are stored in custom fields of the order
-    $orderApi = new \OpenAPI\Client\Api\CommandesApi(new \GuzzleHttp\Client(), CRM_Helloassosync_BAO_HelloAssoConfig::getInstance()->config);
-    $order = $orderApi->ordersOrderIdGet($orderId);
-    $items = $order->getItems();
-    foreach ($items as $item) {
-      $customFields = $item->getCustomFields();
-      foreach ($customFields as $customField) {
-        $customFieldName = $customField->getName();
-        $customFieldAnswer = $customField->getAnswer();
-        CRM_Helloassosync_BAO_Contact::updateCommunicationPreferences($contactId, $customFieldName, $customFieldAnswer);
-      }
+    $customFields = $item->getCustomFields();
+    foreach ($customFields as $customField) {
+      $customFieldName = $customField->getName();
+      $customFieldAnswer = $customField->getAnswer();
+      CRM_Helloassosync_BAO_Contact::updateCommunicationPreferences($contactId, $customFieldName, $customFieldAnswer);
     }
   }
 
   private function processPayments($formSlug, $payments, $formType, $financialTypeId, $campaignId) {
     $totalProcessed = 0;
-    $donationFrequency = self::DONATION_FREQUENCY_ONETIME;
 
     foreach ($payments as $payment) {
-      \Civi::log()->debug('Processing payment', [
-        'name' => $payment['first_name'] . ' ' . $payment['last_name'],
-        'company' => $payment['company'],
-        'email' => $payment['email'],
-        'payment date' => $payment['date'],
-        'amount' => $payment['amount']
-      ]);
-
-      [$orgId, $personId, $status] = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['company'], $payment['first_name'], $payment['last_name'], $payment['email']);
-      CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($orgId ?? $personId, $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
-
-      if ($formType == 'Membership') {
-        CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount']);
-      }
-      else {
-        $donationFrequency = $this->extractFrequence($payment);
-        CRM_Helloassosync_BAO_Order::createDonation($orgId, $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
-      }
-
-      // update mailing preferences for new contacts, one-time donations, or for the first monthly donation
-      if ($status == 'new contact' || $donationFrequency == self::DONATION_FREQUENCY_ONETIME || $payment['installment_number'] == 1) {
-        $this->processMailingSubscriptions($payment['order_id'], $personId);
-      }
+      $this->logPayment($formSlug, $payment);
+      $this->processPayment($formSlug, $payment, $formType, $financialTypeId, $campaignId);
 
       $totalProcessed++;
     }
 
     return $totalProcessed;
+  }
+
+  private function processPayment($formSlug, $payment, $formType, $financialTypeId, $campaignId) {
+    [$orgId, $personId, $order, $donationFrequency] = $this->processPaymentCommon($payment, $formType);
+
+    if ($formType == 'Membership') {
+      $this->processPaymentMembership($formSlug, $orgId ?? $personId, $payment, $donationFrequency, $financialTypeId, $campaignId, $order);
+    }
+    else {
+      $this->processPaymentDonation($formSlug, $orgId, $personId, $payment, $donationFrequency, $financialTypeId, $campaignId);
+    }
+  }
+
+  public function processPaymentCommon($payment, $formType): array {
+    // create or update the person and optionally the organization
+    // an organization gets precedence over a person for address
+    [$orgId, $personId, $status] = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['company'], $payment['first_name'], $payment['last_name'], $payment['email']);
+    CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($orgId ?? $personId, $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
+
+    // get the order details for: memberships OR new contacts OR one-time donations OR for the first monthly donation
+    // the order contains custom fields like the mailing preferences
+    // we don't need to update mailing preferences for recurring donations (except for the first installment)
+    $order = NULL;
+    $donationFrequency = $this->extractFrequence($payment);
+    if ($formType == 'Membership' || $status == 'new contact' || $donationFrequency == self::DONATION_FREQUENCY_ONETIME || $payment['installment_number'] == 1) {
+      $order = $this->orderApi->ordersOrderIdGet($payment['order_id']);
+
+      // update mailing preferences, extracting them from the first item of the order
+      $items = $order->getItems();
+      if (count($items) > 0) {
+        // an organization gets precedence over a person for mailing preferences
+        $this->processMailingSubscriptions($items[0], $orgId ?? $personId);
+      }
+    }
+
+    return [$orgId, $personId, $order, $donationFrequency];
+  }
+
+  /**
+   * @param string $formSlug
+   * @param mixed $orgId
+   * @param mixed $personId
+   * @param $payment
+   * @param int $donationFrequency
+   * @param $financialTypeId
+   * @param $campaignId
+   * @param \OpenAPI\Client\Model\HelloAssoApiV5ModelsStatisticsOrderDetail|null $order
+   *
+   * @return void
+   */
+  public function processPaymentMembership(string $formSlug, int $payerContactId, $payment, int $donationFrequency, $financialTypeId, $campaignId, ?\OpenAPI\Client\Model\HelloAssoApiV5ModelsStatisticsOrderDetail $order): void {
+    $softCredits = [];
+    $contributionId = NULL;
+
+    if (CRM_Helloassosync_BAO_Order::contributionExists($payerContactId,  $payment['id'])) {
+      return;
+    }
+echo "PAYER = $payerContactId\n";
+    // the items contain multiple people, so called parrain - filleuil
+    foreach ($order->getItems() as $item) {
+      [$firstName, $lastName, $email] = $this->extractPersonDetailsFromItem($item);
+      if (empty($firstName) && empty($lastName)) {
+        continue;
+      }
+
+      [$address, $postalCode, $city, $country] = $this->extractAddressFromItem($item);
+      $amount = $this->extractAmountFromItem($item);
+
+      [$orgId, $personId, $status] = CRM_Helloassosync_BAO_Contact::findOrCreate(NULL, $firstName, $lastName, $email);
+      CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($personId, $address, $city, $postalCode, $country);
+      if ($personId == $payerContactId) {
+        // create the contribution for the full amount
+        if (empty($contributionId)) {
+          // the isset above is to prevent creating multiple contributions for the same payment
+          $contributionId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
+          CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $personId);
+        }
+      }
+      else {
+        $softCredits[] = [$personId, $amount];
+      }
+    }
+
+    if (empty($contributionId)) {
+      $contributionId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
+      CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $payerContactId);
+    }
+
+    foreach ($softCredits as [$personId, $amount]) {
+      CRM_Helloassosync_BAO_Order::createSoftContribution($contributionId, $personId, $amount, 11); // 11=Parrainage
+      CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $personId);
+    }
+  }
+
+  public function processPaymentDonation($formSlug, mixed $orgId, mixed $personId, $payment, int $donationFrequency, $financialTypeId, $campaignId): void {
+    $contributionId = CRM_Helloassosync_BAO_Order::createDonation($orgId ?? $personId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
+    if ($orgId) {
+      // the donation is linked to the organization, so we need to create a soft contribution for the person
+      // 5 = Dons dans le cadre professionnel
+      CRM_Helloassosync_BAO_Order::createSoftContribution($contributionId, $personId, $payment['amount'], 5);
+    }
+  }
+
+  private function extractPersonDetailsFromItem($item) {
+    $user = $item->getUser();
+    if (empty($user)) {
+      return ['', '', ''];
+    }
+
+    $firstName = $item->getUser()->getFirstName();
+    $lastName = $item->getUser()->getLastName();
+
+    $email = '';
+
+    $customFields = $item->getCustomFields();
+    foreach ($customFields as $customField) {
+      if ($customField->getName() == 'Email') {
+        $email = $customField->getAnswer();
+        break;
+      }
+    }
+
+    return [$firstName, $lastName, $email];
+  }
+
+  private function extractAddressFromItem($item) {
+    $address = '';
+    $postalCode = '';
+    $city = '';
+    $country = 'FRA';
+
+    $customFields = $item->getCustomFields();
+    foreach ($customFields as $customField) {
+      switch ($customField->getName()) {
+        case 'Adresse':
+          $address = $customField->getAnswer();
+          break;
+        case 'Code postal':
+          $postalCode = $customField->getAnswer();
+          break;
+        case 'Ville':
+          $city = $customField->getAnswer();
+          break;
+        case 'Pays':
+          // not available as custom field yet, but we add it in case it becomes available
+          $country = $customField->getAnswer();
+          break;
+      }
+    }
+
+    return [$address, $postalCode, $city, $country];
+  }
+
+  private function extractAmountFromItem($item) {
+    return $item->getAmount() / 100;
+  }
+
+  private function logPayment($formSlug, $payment) {
+    \Civi::log()->debug('Processing payment', [
+      'form' => $formSlug,
+      'name' => $payment['first_name'] . ' ' . $payment['last_name'],
+      'company' => $payment['company'],
+      'email' => $payment['email'],
+      'payment date' => $payment['date'],
+      'amount' => $payment['amount']
+    ]);
   }
 
   private function extractFrequence($payment): int {
