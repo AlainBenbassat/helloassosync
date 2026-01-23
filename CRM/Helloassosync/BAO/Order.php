@@ -70,7 +70,7 @@ class CRM_HelloAssosync_BAO_Order {
       self::createMembership($contactId, $paymentDate, $year);
     }
     else {
-      self::updateMembership($membership['id'], $year);
+      self::updateMembership($membership, $year);
     }
   }
 
