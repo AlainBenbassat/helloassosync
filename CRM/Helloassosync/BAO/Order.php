@@ -85,10 +85,9 @@ class CRM_HelloAssosync_BAO_Order {
   }
 
   private static function updateMembership($membership, int $year) {
-    \Civi\Api4\Membership::update(FALSE)
-      ->addValue('end_date', "$year-12-31")
-      ->addWhere('id', '=', $membership['id'])
-      ->execute();
+    $newEndDate = $year . substr($membership['end_date'], 4);
+    $sql = "update civicrm_membership set end_date = '" . $newEndDate . "' where id = " . $membership['id'];
+    CRM_Core_DAO::executeQuery($sql);
   }
 
   private static function createOrder($params) {
