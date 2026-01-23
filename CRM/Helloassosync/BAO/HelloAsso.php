@@ -185,6 +185,15 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $payerContactId = $orgId ?? $personId;
     $softCredits = [];
     $contributionId = NULL;
+    if (!empty($orgId)) {
+      // and org always have the membership
+      $payerHasMembership = TRUE;
+    }
+    else {
+      // we will decide later if the payer will have a membership
+      $payerHasMembership = FALSE;
+    }
+
 
     if (CRM_Helloassosync_BAO_Order::contributionExists($payerContactId,  $payment['id'])) {
       return;
@@ -213,6 +222,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($personId, $address, $city, $postalCode, $country);
       if ($personId == $payerContactId) {
         // this is the payer, we will create the contribution later
+        $payerHasMembership = TRUE;
       }
       else {
         // this is another person, we will create a soft credit for it
@@ -222,8 +232,10 @@ class CRM_Helloassosync_BAO_HelloAsso {
     }
 
     // create the contribution for the payer
-    $contributionId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'], $payment['date'], $payment['status'], $totalAmount, $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
-    CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $payerContactId);
+    if ($payerHasMembership) {
+      $contributionId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'], $payment['date'], $payment['status'], $totalAmount, $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
+      CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $payerContactId);
+    }
 
     // manage the soft credits
     foreach ($softCredits as [$personId, $amount]) {
