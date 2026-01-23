@@ -232,7 +232,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
     }
 
     // create the contribution for the payer
-    if ($payerHasMembership) {
+    if ($payerHasMembership || count($softCredits) == 0) {
       $contributionId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'], $payment['date'], $payment['status'], $totalAmount, $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
       CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $payerContactId);
     }
