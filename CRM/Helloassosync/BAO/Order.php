@@ -56,7 +56,7 @@ class CRM_HelloAssosync_BAO_Order {
 
     // create an activity for the first monthly donation
     if ($donationFrequency != 1 && $installmentNumber == 1) {
-      CRM_Helloassosync_BAO_Contact::createActivityFirstRecurringDonation($mainContactId, $paymentDate);
+      CRM_Helloassosync_BAO_Contact::createActivityFirstRecurringDonation($mainContactId, $financialTypeId, $paymentDate);
     }
 
     return $order['id'];
