@@ -252,13 +252,13 @@ class CRM_Helloassosync_BAO_Contact {
       ->execute();
   }
 
-  private static function isDifferentAddress($address, $streetAddress, $city, $postalCode, $countryCode) {
+  private static function isDifferentAddress($address, $streetAddress, $city, $postalCode, $countryCode): bool {
     return $address['street_address'] !== $streetAddress
       || $address['city'] !== $city
       || $address['postal_code'] !== $postalCode;
   }
 
-  private static function updateAddress($addressId, $streetAddress, $city, $postalCode, $countryCode) {
+  private static function updateAddress($addressId, $streetAddress, $city, $postalCode, $countryCode): void {
     \Civi\Api4\Address::update(FALSE)
       ->addWhere('id', '=', $addressId)
       ->addValue('street_address', $streetAddress)
@@ -268,7 +268,7 @@ class CRM_Helloassosync_BAO_Contact {
       ->execute();
   }
 
-  private static function convertCountryCode($countryCode) {
+  private static function convertCountryCode($countryCode): int {
     if ($countryCode === 'FRA') {
       return 1076;
     }

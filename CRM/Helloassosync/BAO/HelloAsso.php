@@ -121,10 +121,10 @@ class CRM_Helloassosync_BAO_HelloAsso {
   private function processPayments($formSlug, $payments, $formType, $financialTypeId, $campaignId) {
     $totalProcessed = 0;
 
+    // loop over all the payments
     foreach ($payments as $payment) {
       $this->logPayment($formSlug, $payment);
       $this->processPayment($formSlug, $payment, $formType, $financialTypeId, $campaignId);
-
       $totalProcessed++;
     }
 
@@ -132,10 +132,12 @@ class CRM_Helloassosync_BAO_HelloAsso {
   }
 
   private function processPayment($formSlug, $payment, $formType, $financialTypeId, $campaignId) {
+    // process the common things
     [$orgId, $personId, $order, $donationFrequency] = $this->processPaymentCommon($payment, $formType);
 
+    // process the specific things
     if ($formType == 'Membership') {
-      $this->processPaymentMembership($formSlug, $orgId ?? $personId, $payment, $donationFrequency, $financialTypeId, $campaignId, $order);
+      $this->processPaymentMembership($formSlug, $orgId, $personId, $payment, $donationFrequency, $financialTypeId, $campaignId, $order);
     }
     else {
       $this->processPaymentDonation($formSlug, $orgId, $personId, $payment, $donationFrequency, $financialTypeId, $campaignId);
@@ -179,47 +181,57 @@ class CRM_Helloassosync_BAO_HelloAsso {
    *
    * @return void
    */
-  public function processPaymentMembership(string $formSlug, int $payerContactId, $payment, int $donationFrequency, $financialTypeId, $campaignId, ?\OpenAPI\Client\Model\HelloAssoApiV5ModelsStatisticsOrderDetail $order): void {
+  public function processPaymentMembership(string $formSlug, mixed $orgId, int $personId, $payment, int $donationFrequency, $financialTypeId, $campaignId, ?\OpenAPI\Client\Model\HelloAssoApiV5ModelsStatisticsOrderDetail $order): void {
+    $payerContactId = $orgId ?? $personId;
     $softCredits = [];
     $contributionId = NULL;
 
     if (CRM_Helloassosync_BAO_Order::contributionExists($payerContactId,  $payment['id'])) {
       return;
     }
-echo "PAYER = $payerContactId\n";
-    // the items contain multiple people, so called parrain - filleuil
+
+    $totalAmount = $payment['amount'];
+    $extraDonation = 0;
+
+    // the items contain multiple people, so-called parrain - filleuil, and/or an extra donation
     foreach ($order->getItems() as $item) {
-      [$firstName, $lastName, $email] = $this->extractPersonDetailsFromItem($item);
-      if (empty($firstName) && empty($lastName)) {
+      $amount = $this->extractAmountFromItem($item);
+
+      if ($this->isExtraDonationInItem($item)) {
+        // this is a donation on top of the membership
+        $donationFinancialTypeId = 12; // Don
+        $extraDonation = $amount;
+        $totalAmount -= $extraDonation;
+        CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'] . '-1', $payment['date'], $payment['status'], $extraDonation, $payment['payment_means'], $payment['installment_number'], $donationFrequency, $donationFinancialTypeId, $campaignId);
         continue;
       }
 
+      [$firstName, $lastName, $email] = $this->extractPersonDetailsFromItem($item);
       [$address, $postalCode, $city, $country] = $this->extractAddressFromItem($item);
-      $amount = $this->extractAmountFromItem($item);
 
-      [$orgId, $personId, $status] = CRM_Helloassosync_BAO_Contact::findOrCreate(NULL, $firstName, $lastName, $email);
+      [$ignore1, $personId, $ignore2] = CRM_Helloassosync_BAO_Contact::findOrCreate(NULL, $firstName, $lastName, $email);
       CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($personId, $address, $city, $postalCode, $country);
       if ($personId == $payerContactId) {
-        // create the contribution for the full amount
-        if (empty($contributionId)) {
-          // the isset above is to prevent creating multiple contributions for the same payment
-          $contributionId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
-          CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $personId);
-        }
+        // this is the payer, we will create the contribution later
       }
       else {
+        // this is another person, we will create a soft credit for it
         $softCredits[] = [$personId, $amount];
+        $this->processMailingSubscriptions($item, $personId);
       }
     }
 
-    if (empty($contributionId)) {
-      $contributionId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'], $payment['date'], $payment['status'], $payment['amount'], $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
-      CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $payerContactId);
-    }
+    // create the contribution for the payer
+    $contributionId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'], $payment['date'], $payment['status'], $totalAmount, $payment['payment_means'], $payment['installment_number'], $donationFrequency, $financialTypeId, $campaignId);
+    CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $payerContactId);
 
+    // manage the soft credits
     foreach ($softCredits as [$personId, $amount]) {
       CRM_Helloassosync_BAO_Order::createSoftContribution($contributionId, $personId, $amount, 11); // 11=Parrainage
-      CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $personId);
+      if (empty($orgId)) {
+        // for organisations: only a membership on the organisation, not the people in the items
+        CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $personId);
+      }
     }
   }
 
@@ -232,12 +244,17 @@ echo "PAYER = $payerContactId\n";
     }
   }
 
-  private function extractPersonDetailsFromItem($item) {
-    $user = $item->getUser();
-    if (empty($user)) {
-      return ['', '', ''];
+  private function isExtraDonationInItem($item): bool {
+    // we know it is an extra donation if the user is empty
+    if (empty($item->getUser())) {
+      return TRUE;
     }
+    else {
+      return FALSE;
+    }
+  }
 
+  private function extractPersonDetailsFromItem($item) {
     $firstName = $item->getUser()->getFirstName();
     $lastName = $item->getUser()->getLastName();
 
