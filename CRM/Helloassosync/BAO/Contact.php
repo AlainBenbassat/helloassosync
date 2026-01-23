@@ -286,7 +286,7 @@ class CRM_Helloassosync_BAO_Contact {
 
     return \Civi\Api4\Membership::get(FALSE)
       ->addWhere('contact_id', '=', $contactId)
-      ->addWhere('end_date', '>=', "$year-01-01")
+      ->addWhere('end_date', '>=', "$lastYear-01-01")
       ->execute()
       ->first();
   }
