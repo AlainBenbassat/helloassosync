@@ -194,7 +194,6 @@ class CRM_Helloassosync_BAO_HelloAsso {
       $payerHasMembership = FALSE;
     }
 
-
     if (CRM_Helloassosync_BAO_Order::contributionExists($payerContactId,  $payment['id'])) {
       return;
     }
@@ -211,7 +210,12 @@ class CRM_Helloassosync_BAO_HelloAsso {
         $donationFinancialTypeId = 12; // Don
         $extraDonation = $amount;
         $totalAmount -= $extraDonation;
-        CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'] . '-1', $payment['date'], $payment['status'], $extraDonation, $payment['payment_means'], $payment['installment_number'], $donationFrequency, $donationFinancialTypeId, $campaignId);
+        $extraDonationContribId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'] . '-1', $payment['date'], $payment['status'], $extraDonation, $payment['payment_means'], $payment['installment_number'], $donationFrequency, $donationFinancialTypeId, $campaignId);
+        if (!empty($orgId)) {
+          // the donation is linked to the organization, so we need to create a soft contribution for the person
+          // 5 = Dons dans le cadre professionnel
+          CRM_Helloassosync_BAO_Order::createSoftContribution($extraDonationContribId, $personId, $extraDonation, 5);
+        }
         continue;
       }
 
