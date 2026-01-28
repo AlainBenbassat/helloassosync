@@ -123,7 +123,7 @@ class CRM_Helloassosync_BAO_Contact {
     }
   }
 
-  public static function createOrUpdateAddress($contactId, $streetAddress, $city, $postalCode, $countryCode) {
+  public static function createOrUpdateAddress($contactId, $streetAddress, $city, $postalCode, $countryCode): void {
     $address = \Civi\Api4\Address::get(FALSE)
       ->addSelect('*')
       ->addWhere('contact_id', '=', $contactId)
@@ -137,6 +137,44 @@ class CRM_Helloassosync_BAO_Contact {
     elseif (self::isDifferentAddress($address, $streetAddress, $city, $postalCode, $countryCode)) {
       self::updateAddress($address['id'], $streetAddress, $city, $postalCode, $countryCode);
     }
+  }
+
+  public static function updateBirthDate(int $personId, ?string $birthDate): void {
+    if (empty($birthDate)) {
+      return;
+    }
+
+    \Civi\Api4\Contact::update(FALSE)
+      ->addValue('birth_date', self::reformatBirthDateIntoYMD($birthDate))
+      ->addWhere('id', '=', $personId)
+      ->execute();
+  }
+
+  private static function reformatBirthDateIntoYMD(string $birthDate): string {
+    return substr($birthDate, 6, 4) . '-' . substr($birthDate, 3, 2) . '-' . substr($birthDate, 0, 2);
+  }
+
+  public static function createOrUpdatePhone(int $personId, ?string $phoneNumber): void {
+    if (empty($phoneNumber)) {
+      return;
+    }
+
+    $phone = \Civi\Api4\Phone::get(FALSE)
+      ->addWhere('contact_id', '=', $personId)
+      ->execute()
+      ->first();
+
+    if ($phone) {
+      return;
+    }
+
+    \Civi\Api4\Phone::create(FALSE)
+      ->addValue('contact_id', $personId)
+      ->addValue('phone', $phoneNumber)
+      ->addValue('phone_type_id', 1)
+      ->addValue('location_type_id', self::LOCATION_TYPE_ID_MAIN)
+      ->addValue('is_primary', TRUE)
+      ->execute();
   }
 
   private static function findIndividual($firstName, $lastName, $email) {

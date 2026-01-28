@@ -163,6 +163,12 @@ class CRM_Helloassosync_BAO_HelloAsso {
       if (count($items) > 0) {
         // an organization gets precedence over a person for mailing preferences
         $this->processMailingSubscriptions($items[0], $orgId ?? $personId);
+
+        // custom fields might also contain birthdate and phone number
+        $birthDate = $this->extractBirthDateFromItem($items[0]);
+        $phoneNumber = $this->extractPhoneNumberFromItem($items[0]);
+        CRM_Helloassosync_BAO_Contact::updateBirthDate($personId, $birthDate);
+        CRM_Helloassosync_BAO_Contact::createOrUpdatePhone($personId, $phoneNumber);
       }
     }
 
@@ -205,13 +211,14 @@ class CRM_Helloassosync_BAO_HelloAsso {
     foreach ($order->getItems() as $item) {
       $amount = $this->extractAmountFromItem($item);
 
+      // process an optional extra donation on top of the membership
       if ($this->isExtraDonationInItem($item)) {
         // this is a donation on top of the membership
         $donationFinancialTypeId = 12; // Don
         $extraDonation = $amount;
         $totalAmount -= $extraDonation;
         $extraDonationContribId = CRM_Helloassosync_BAO_Order::createDonation($payerContactId, $payment['id'] . '-1', $payment['date'], $payment['status'], $extraDonation, $payment['payment_means'], $payment['installment_number'], $donationFrequency, $donationFinancialTypeId, $campaignId);
-        if (!empty($orgId)) {
+        if ($orgId) {
           // the donation is linked to the organization, so we need to create a soft contribution for the person
           // 5 = Dons dans le cadre professionnel
           CRM_Helloassosync_BAO_Order::createSoftContribution($extraDonationContribId, $personId, $extraDonation, 5);
@@ -219,17 +226,24 @@ class CRM_Helloassosync_BAO_HelloAsso {
         continue;
       }
 
+      // extract the contact details from the item
       [$firstName, $lastName, $email] = $this->extractPersonDetailsFromItem($item);
       [$address, $postalCode, $city, $country] = $this->extractAddressFromItem($item);
+      $birthDate = $this->extractBirthDateFromItem($item);
+      $phoneNumber = $this->extractPhoneNumberFromItem($item);
 
+      // process the contact details
       [$ignore1, $personId, $ignore2] = CRM_Helloassosync_BAO_Contact::findOrCreate(NULL, $firstName, $lastName, $email);
       CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($personId, $address, $city, $postalCode, $country);
+      CRM_Helloassosync_BAO_Contact::updateBirthDate($personId, $birthDate);
+      CRM_Helloassosync_BAO_Contact::createOrUpdatePhone($personId, $phoneNumber);
+
       if ($personId == $payerContactId) {
         // this is the payer, we will create the contribution later
         $payerHasMembership = TRUE;
       }
       else {
-        // this is another person, we will create a soft credit for it
+        // this is another person, we will create a soft credit for him/her
         $softCredits[] = [$personId, $amount];
         $this->processMailingSubscriptions($item, $personId);
       }
@@ -315,6 +329,34 @@ class CRM_Helloassosync_BAO_HelloAsso {
     }
 
     return [$address, $postalCode, $city, $country];
+  }
+
+  private function extractBirthDateFromItem($item) {
+    $birthDate = '';
+
+    $customFields = $item->getCustomFields();
+    foreach ($customFields as $customField) {
+      if ($customField->getName() == 'Date de naissance') {
+        $birthDate = $customField->getAnswer();
+        break;
+      }
+    }
+
+    return $birthDate;
+  }
+
+  private function extractPhoneNumberFromItem($item) {
+    $phoneNumber = '';
+
+    $customFields = $item->getCustomFields();
+    foreach ($customFields as $customField) {
+      if ($customField->getName() == 'Numéro de téléphone') {
+        $phoneNumber = $customField->getAnswer();
+        break;
+      }
+    }
+
+    return $phoneNumber;
   }
 
   private function extractAmountFromItem($item) {
