@@ -326,6 +326,7 @@ class CRM_Helloassosync_BAO_Contact {
       case 'en version papier': return 1;
       case 'en version électronique': return 2;
       case 'je ne souhaite pas recevoir le goupil': return 3;
+      case 'je ne souhaite pas recevoir le magazine goupil': return 3;
       case 'uniquement la newsletter mensuelle': return 2;
       case 'aucune communication': return 3;
     }
