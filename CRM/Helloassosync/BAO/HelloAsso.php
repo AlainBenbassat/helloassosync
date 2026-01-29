@@ -385,6 +385,15 @@ class CRM_Helloassosync_BAO_HelloAsso {
 
   private function transformPaymentToArray($p) {
     $payer = $p->getPayer();
+
+    $dateOfBirth = $payer->getDateOfBirth();
+    if ($dateOfBirth) {
+      $formattedBirthDate = $dateOfBirth->format('Y-m-d');
+    }
+    else {
+      $formattedBirthDate = '';
+    }
+
     return [
       'id' => $p->getId(),
       'date' => $p->getDate()->format('Y-m-d H:i:s'),
@@ -392,7 +401,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       'status' => $p->getState(),
       'first_name' => $payer->getFirstName(),
       'last_name' => $payer->getLastName(),
-      'birth_date' => $payer->getDateOfBirth(),
+      'birth_date' => $formattedBirthDate,
       'email' => $payer->getEmail(),
       'address' => $payer->getAddress(),
       'city' => $payer->getCity(),
