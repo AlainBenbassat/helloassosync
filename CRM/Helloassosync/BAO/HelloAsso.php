@@ -149,6 +149,9 @@ class CRM_Helloassosync_BAO_HelloAsso {
     // an organization gets precedence over a person for address
     [$orgId, $personId, $status] = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['company'], $payment['first_name'], $payment['last_name'], $payment['email']);
     CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($orgId ?? $personId, $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
+    if (!empty($payment['birth_date'])) {
+      CRM_Helloassosync_BAO_Contact::updateBirthDate($personId, $payment['birth_date']);
+    }
 
     // get the order details for: memberships OR new contacts OR one-time donations OR for the first monthly donation
     // the order contains custom fields like the mailing preferences
@@ -163,12 +166,6 @@ class CRM_Helloassosync_BAO_HelloAsso {
       if (count($items) > 0) {
         // an organization gets precedence over a person for mailing preferences
         $this->processMailingSubscriptions($items[0], $orgId ?? $personId);
-
-        // custom fields might also contain birthdate and phone number
-        $birthDate = $this->extractBirthDateFromItem($items[0]);
-        $phoneNumber = $this->extractPhoneNumberFromItem($items[0]);
-        CRM_Helloassosync_BAO_Contact::updateBirthDate($personId, $birthDate);
-        CRM_Helloassosync_BAO_Contact::createOrUpdatePhone($personId, $phoneNumber);
       }
     }
 
@@ -316,6 +313,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
           $address = $customField->getAnswer();
           break;
         case 'Code postal':
+        case 'Code Postal':
           $postalCode = $customField->getAnswer();
           break;
         case 'Ville':
@@ -325,6 +323,8 @@ class CRM_Helloassosync_BAO_HelloAsso {
           // not available as custom field yet, but we add it in case it becomes available
           $country = $customField->getAnswer();
           break;
+        default:
+          //echo "Custom field not handled: " . $customField->getName() . "\n";
       }
     }
 
@@ -392,6 +392,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
       'status' => $p->getState(),
       'first_name' => $payer->getFirstName(),
       'last_name' => $payer->getLastName(),
+      'birth_date' => $payer->getDateOfBirth(),
       'email' => $payer->getEmail(),
       'address' => $payer->getAddress(),
       'city' => $payer->getCity(),
