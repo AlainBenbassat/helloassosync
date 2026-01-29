@@ -338,6 +338,13 @@ class CRM_Helloassosync_BAO_HelloAsso {
     foreach ($customFields as $customField) {
       if ($customField->getName() == 'Date de naissance') {
         $birthDate = $customField->getAnswer();
+        if (strlen($birthDate) == 10) {
+          // reformat from d/m/Y to Y-m-d
+          $birthDate = substr($birthDate, 6, 4) . '-' . substr($birthDate, 3, 2) . '-' . substr($birthDate, 0, 2);
+        }
+        else {
+          $birthDate = '';
+        }
         break;
       }
     }

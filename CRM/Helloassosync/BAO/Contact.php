@@ -145,13 +145,9 @@ class CRM_Helloassosync_BAO_Contact {
     }
 
     \Civi\Api4\Contact::update(FALSE)
-      ->addValue('birth_date', self::reformatBirthDateIntoYMD($birthDate))
+      ->addValue('birth_date', $birthDate)
       ->addWhere('id', '=', $personId)
       ->execute();
-  }
-
-  private static function reformatBirthDateIntoYMD(string $birthDate): string {
-    return substr($birthDate, 6, 4) . '-' . substr($birthDate, 3, 2) . '-' . substr($birthDate, 0, 2);
   }
 
   public static function createOrUpdatePhone(int $personId, ?string $phoneNumber): void {
