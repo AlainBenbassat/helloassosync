@@ -148,10 +148,6 @@ class CRM_Helloassosync_BAO_HelloAsso {
     // create or update the person and optionally the organization
     // an organization gets precedence over a person for address
     [$orgId, $personId, $status] = CRM_Helloassosync_BAO_Contact::findOrCreate($payment['company'], $payment['first_name'], $payment['last_name'], $payment['email']);
-    CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($orgId ?? $personId, $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
-    if (!empty($payment['birth_date'])) {
-      CRM_Helloassosync_BAO_Contact::updateBirthDate($personId, $payment['birth_date']);
-    }
 
     // get the order details for: memberships OR new contacts OR one-time donations OR for the first monthly donation
     // the order contains custom fields like the mailing preferences
@@ -166,6 +162,12 @@ class CRM_Helloassosync_BAO_HelloAsso {
       if (count($items) > 0) {
         // an organization gets precedence over a person for mailing preferences
         $this->processMailingSubscriptions($items[0], $orgId ?? $personId);
+      }
+
+      // update postal address and birth date
+      CRM_Helloassosync_BAO_Contact::createOrUpdateAddress($orgId ?? $personId, $payment['address'], $payment['city'], $payment['postal_code'], $payment['country']);
+      if (!empty($payment['birth_date'])) {
+        CRM_Helloassosync_BAO_Contact::updateBirthDate($personId, $payment['birth_date']);
       }
     }
 
