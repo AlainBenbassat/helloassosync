@@ -4,14 +4,15 @@
 
 class CRM_Helloassosync_Import {
   public static function run() {
-    $dateFrom = '2025-12-01';
-    $dateTo = '2026-01-06';
+    $dateFrom = '2026-01-02';
+    $dateTo = '2026-01-01';
 
-    self::processFormWithinDateRange(1, "Donation", $dateFrom, $dateTo, 10, 56);
-    self::processFormWithinDateRange(2, "Donation", $dateFrom, $dateTo, 21, 3);
-    self::processFormWithinDateRange(5, "Donation", $dateFrom, $dateTo, 19, null);
-    self::processFormWithinDateRange(6, "Donation", $dateFrom, $dateTo, 10, 56);
-    self::processFormWithinDateRange(10, "Donation", $dateFrom, $dateTo, 12, 55);
+//    self::processFormWithinDateRange(1, "Donation", $dateFrom, $dateTo, 10, 56);
+//    self::processFormWithinDateRange(2, "Donation", $dateFrom, $dateTo, 21, 3);
+//    self::processFormWithinDateRange(5, "Donation", $dateFrom, $dateTo, 19, null);
+//    self::processFormWithinDateRange(6, "Donation", $dateFrom, $dateTo, 10, 56);
+//    self::processFormWithinDateRange(10, "Donation", $dateFrom, $dateTo, 12, 55);
+    self::processFormWithinDateRange('adhesion-2026', "Membership", $dateFrom, $dateTo, 13, 109);
   }
 
   private static function processFormWithinDateRange($form_slug, $form_type, $date_from, $date_to, $financial_type_id, $camaign_id) {
@@ -39,7 +40,7 @@ class CRM_Helloassosync_Import {
         echo "ERREUR " . $e->getMessage() . "\n";
       }
 
-      sleep(1);
+      sleep(2);
 
       $dateStart->modify('+1 day');
     }
