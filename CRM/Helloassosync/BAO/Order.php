@@ -85,8 +85,9 @@ class CRM_HelloAssosync_BAO_Order {
   }
 
   private static function updateMembership($membership, int $year) {
+    $newStartDate = $year . '-01-01';
     $newEndDate = $year . substr($membership['end_date'], 4);
-    $sql = "update civicrm_membership set status_id = 2, end_date = '" . $newEndDate . "' where id = " . $membership['id'];
+    $sql = "update civicrm_membership set status_id = 2, start_date = '" . $newStartDate . "', end_date = '" . $newEndDate . "' where id = " . $membership['id'];
     CRM_Core_DAO::executeQuery($sql);
   }
 

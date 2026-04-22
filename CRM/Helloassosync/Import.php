@@ -4,8 +4,10 @@
 
 class CRM_Helloassosync_Import {
   public static function run() {
+    die('OBSOLETE');
+    
     $dateFrom = '2026-01-02';
-    $dateTo = '2026-01-01';
+    $dateTo = '2026-01-31';
 
 //    self::processFormWithinDateRange(1, "Donation", $dateFrom, $dateTo, 10, 56);
 //    self::processFormWithinDateRange(2, "Donation", $dateFrom, $dateTo, 21, 3);
