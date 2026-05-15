@@ -5,7 +5,7 @@
 class CRM_Helloassosync_Import {
   public static function run() {
     die('OBSOLETE');
-    
+
     $dateFrom = '2026-01-02';
     $dateTo = '2026-01-31';
 
