@@ -42,7 +42,7 @@ class CRM_Helloassosync_Form_ManualSync extends CRM_Core_Form {
     $x = Civi::entity('FinancialType')->getOptions('label');
 
     $this->add('text', 'form_slug', 'Slug du formulaire', [], TRUE);
-    $this->addRadio('form_type', 'Type du formulaire', ['Membership' => 'Cotisation', 'Donation' => 'Don']);
+    $this->addRadio('form_type', 'Type du formulaire', ['Membership' => 'Cotisation', 'Donation' => 'Don', 'CrowdFunding' => 'Crowdfunding']);
     $this->add('select', 'financial_type_id', 'Type de recette', $this->getFinancialTypes(), TRUE);
     $this->add('select', 'campaign_id', 'Id de la campagne', $this->getCampaigns(), FALSE);
     $this->add('datepicker', 'payment_date', 'Date', [], TRUE, ['time' => FALSE]);
