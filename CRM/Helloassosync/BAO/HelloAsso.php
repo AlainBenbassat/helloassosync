@@ -190,14 +190,9 @@ class CRM_Helloassosync_BAO_HelloAsso {
     $payerContactId = $orgId ?? $personId;
     $softCredits = [];
     $contributionId = NULL;
-    if (!empty($orgId)) {
-      // and org always have the membership
-      $payerHasMembership = TRUE;
-    }
-    else {
-      // we will decide later if the payer will have a membership
-      $payerHasMembership = FALSE;
-    }
+    
+    // we will decide later if the payer will have a membership
+    $payerHasMembership = FALSE;
 
     if (CRM_Helloassosync_BAO_Order::contributionExists($payerContactId,  $payment['id'])) {
       return;
@@ -259,10 +254,7 @@ class CRM_Helloassosync_BAO_HelloAsso {
     // manage the soft credits
     foreach ($softCredits as [$personId, $amount]) {
       CRM_Helloassosync_BAO_Order::createSoftContribution($contributionId, $personId, $amount, 11); // 11=Parrainage
-      if (empty($orgId)) {
-        // for organisations: only a membership on the organisation, not the people in the items
-        CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $personId);
-      }
+      CRM_Helloassosync_BAO_Order::createOrUpdateMembership($formSlug, $payment['date'], $personId);
     }
   }
 
